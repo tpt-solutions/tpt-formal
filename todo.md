@@ -42,19 +42,17 @@ spec.txt's per-crate build notes, not a code port.
 
 ## Phase 2 — Design-by-Contract Core
 
-> BLOCKED: depends on `tpt-math-numeric` (sibling `tpt-math` repo, not yet
-> published). Unblocks once `tpt-math-numeric` is available as a path/git dep.
-
 **`tpt-for-contract`** [no_std] — pre/post/invariant/loop-invariant
-- [ ] Confirm `tpt-math-numeric` available as path/git dep (pre-publish) or
-      crates.io dep (post-publish) — cross-repo prerequisite, `tpt-math` not
-      yet built either
-- [ ] Scaffold crate
-- [ ] Design public API (unify precond/postcond/invariant/loop-inv into one
-      coherent contract surface)
-- [ ] Implement
-- [ ] Unit tests
-- [ ] Docs + examples
+- [x] Implemented self-contained (no `tpt-math-numeric` hard dependency); the
+      crate is generic over any `bool` condition, so `tpt-math-numeric` types
+      compose directly. Wire the path/git dep when `tpt-math` is published.
+- [x] Scaffold crate
+- [x] Design public API (unify precond/postcond/invariant/loop-inv into one
+      coherent contract surface via `requires!`/`ensures!`/`invariant!`/
+      `loop_invariant!` + `Invariant` trait + `ContractError`)
+- [x] Implement
+- [x] Unit tests
+- [x] Docs + examples
 
 ## Phase 3 — Contract/Typestate Extensions
 
@@ -66,24 +64,20 @@ spec.txt's per-crate build notes, not a code port.
 - [x] Docs + examples
 
 **`tpt-for-refinement`** [no_std] — refinement types (needs `tpt-for-contract`)
-- [ ] Scaffold crate
-- [ ] Design public API
-- [ ] Implement
-- [ ] Unit tests
-- [ ] Docs + examples
+- [x] Scaffold crate
+- [x] Design public API (`Refined<T, P>` + `Predicate`, blanket `Invariant` impl)
+- [x] Implement
+- [x] Unit tests
+- [x] Docs + examples
 
 ## Phase 4 — Verified Numerics & Algorithms
 
-> BLOCKED: both crates depend on `tpt-for-contract` (Phase 2), which is itself
-> blocked on `tpt-math-numeric`. `tpt-for-verified-ode` additionally needs the
-> cross-repo `tpt-sci-ode` (sibling `tpt-science` repo, not yet built).
-
 **`tpt-for-verified-algorithms`** — verified algorithm implementations (needs `tpt-for-contract`)
-- [ ] Scaffold crate
-- [ ] Design public API (which algorithm families ship first)
-- [ ] Implement
-- [ ] Unit tests
-- [ ] Docs + examples
+- [x] Scaffold crate
+- [x] Design public API (gcd, clamp, binary-search, insertion-sort guarded by contracts)
+- [x] Implement
+- [x] Unit tests
+- [x] Docs + examples
 
 **`tpt-for-verified-ode`** — verified ODE solving (needs `tpt-for-contract` + external `tpt-sci-ode`)
 - [ ] Confirm `tpt-sci-ode` available as path/git dep — cross-repo
@@ -94,24 +88,21 @@ spec.txt's per-crate build notes, not a code port.
 - [ ] Unit tests
 - [ ] Docs + examples
 
+> DEFERRED: `tpt-sci-ode` does not exist yet in the sibling `tpt-science` repo.
+
 ## Phase 5 — SMT Bridge
 
-> BLOCKED (audit pending): requires auditing existing Rust SMT-solver bindings
-> per ADR 0007 (license MUST be `MIT OR Apache-2.0` or more permissive;
-> Apache-2.0-only disqualifies). Until that audit lands, this crate is
-> deferred — document the "build, not wrap" decision when unblocked.
-
 **`tpt-for-smt-lite`** — lightweight SMT bridge
-- [ ] Audit existing Rust SMT-solver bindings for a valid wrap target — license
-      MUST be `MIT OR Apache-2.0` or more permissive per ADR 0007
-      (Apache-2.0-only disqualifies, no exceptions)
-- [ ] If a valid binding exists: scaffold as a thin wrapper. If not: document
-      the "build, not wrap" decision and reason
-- [ ] Scaffold crate
-- [ ] Design public API (bridge surface)
-- [ ] Implement
-- [ ] Unit tests
-- [ ] Docs + examples
+- [x] Audit existing Rust SMT-solver bindings (ADR 0007): `rsmt2` (MIT/Apache-2.0)
+      and `z3` (MIT) are valid wrap targets (Apache-2.0-only disqualifies — none
+      of the candidates violate this).
+- [x] Scaffold crate: solver-agnostic term/problem builder + SMT-LIB2 serializer
+      + minimal built-in ground evaluator (external solver wrap deferred to a
+      `backend-rsmt2` feature pending solver binary in CI).
+- [x] Design public API (bridge surface: `Sort`/`Term`/`Problem`/`check_sat`)
+- [x] Implement
+- [x] Unit tests
+- [x] Docs + examples
 
 ## Phase 6 — Proof, Testing, Simulation & Fault-Tolerance Harnesses
 

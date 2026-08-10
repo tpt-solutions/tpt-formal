@@ -1,0 +1,18 @@
+[package]
+name = "tpt-for-contract"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Design-by-contract: preconditions, postconditions, invariants, loop invariants."
+
+[dependencies]
+
+[features]
+default = ["std"]
+std = []
+alloc = []
+
+[lints]
+workspace = true

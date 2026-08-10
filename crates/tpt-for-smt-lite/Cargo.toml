@@ -1,0 +1,13 @@
+[package]
+name = "tpt-for-smt-lite"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Lightweight SMT bridge: typed term/problem builder, SMT-LIB2 serializer, minimal evaluator."
+
+[dependencies]
+
+[lints]
+workspace = true

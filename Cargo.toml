@@ -4,23 +4,23 @@ members = [
     # Phase 1 — Type-level safety toolkit
     "crates/tpt-for-typestate",
     "crates/tpt-for-assert-const",
+    # Phase 2 — Design-by-contract core
+    "crates/tpt-for-contract",
     # Phase 3 — Contract/typestate extensions
     "crates/tpt-for-witness",
+    "crates/tpt-for-refinement",
+    # Phase 4 — Verified numerics & algorithms
+    "crates/tpt-for-verified-algorithms",
+    # Phase 5 — SMT bridge
+    "crates/tpt-for-smt-lite",
     # Phase 6 — Proof / testing / simulation / fault-tolerance harnesses
     "crates/tpt-for-proof-ast",
     "crates/tpt-for-det-proptest",
     "crates/tpt-for-deterministic-sim",
     "crates/tpt-for-redundancy",
     "crates/tpt-for-trace-macros",
-    # Phase 2 — Design-by-contract core (depends on tpt-math-numeric, see todo.md)
-    # "crates/tpt-for-contract",
-    # Phase 3 — Refinement (depends on tpt-for-contract)
-    # "crates/tpt-for-refinement",
-    # Phase 4 — Verified numerics & algorithms
-    # "crates/tpt-for-verified-algorithms",
+    # Phase 4 — Verified ODE (deferred: needs cross-repo tpt-sci-ode)
     # "crates/tpt-for-verified-ode",
-    # Phase 5 — SMT bridge (pending external binding audit, see ADR 0007)
-    # "crates/tpt-for-smt-lite",
 ]
 exclude = []
 
@@ -36,7 +36,11 @@ repository = "https://github.com/tpt-solutions/tpt-formal"
 [workspace.dependencies]
 tpt-for-typestate = { version = "0.1.0", path = "crates/tpt-for-typestate" }
 tpt-for-assert-const = { version = "0.1.0", path = "crates/tpt-for-assert-const" }
+tpt-for-contract = { version = "0.1.0", path = "crates/tpt-for-contract" }
 tpt-for-witness = { version = "0.1.0", path = "crates/tpt-for-witness" }
+tpt-for-refinement = { version = "0.1.0", path = "crates/tpt-for-refinement" }
+tpt-for-verified-algorithms = { version = "0.1.0", path = "crates/tpt-for-verified-algorithms" }
+tpt-for-smt-lite = { version = "0.1.0", path = "crates/tpt-for-smt-lite" }
 tpt-for-proof-ast = { version = "0.1.0", path = "crates/tpt-for-proof-ast" }
 tpt-for-det-proptest = { version = "0.1.0", path = "crates/tpt-for-det-proptest" }
 tpt-for-deterministic-sim = { version = "0.1.0", path = "crates/tpt-for-deterministic-sim" }

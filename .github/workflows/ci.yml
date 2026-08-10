@@ -54,7 +54,9 @@ jobs:
           # NOT a blind --workspace build. Add each new no_std crate here.
           cargo build --target thumbv6m-none-eabi --no-default-features -p tpt-for-typestate \
             -p tpt-for-assert-const \
+            -p tpt-for-contract \
             -p tpt-for-witness \
+            -p tpt-for-refinement \
             -p tpt-for-redundancy \
             -p tpt-for-trace-macros
 

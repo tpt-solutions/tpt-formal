@@ -7,6 +7,10 @@ name = "tpt-for-assert-const"
 version = "0.1.0"
 
 [[package]]
+name = "tpt-for-contract"
+version = "0.1.0"
+
+[[package]]
 name = "tpt-for-det-proptest"
 version = "0.1.0"
 
@@ -23,12 +27,30 @@ name = "tpt-for-redundancy"
 version = "0.1.0"
 
 [[package]]
+name = "tpt-for-refinement"
+version = "0.1.0"
+dependencies = [
+ "tpt-for-contract",
+]
+
+[[package]]
+name = "tpt-for-smt-lite"
+version = "0.1.0"
+
+[[package]]
 name = "tpt-for-trace-macros"
 version = "0.1.0"
 
 [[package]]
 name = "tpt-for-typestate"
 version = "0.1.0"
+
+[[package]]
+name = "tpt-for-verified-algorithms"
+version = "0.1.0"
+dependencies = [
+ "tpt-for-contract",
+]
 
 [[package]]
 name = "tpt-for-witness"

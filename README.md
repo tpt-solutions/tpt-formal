@@ -24,12 +24,12 @@ primitives into one dedicated pillar. The authoritative design notes live in
 |-------|-------|----------|---------------|---------|
 | `tpt-for-typestate` | 1 | yes | — | Phantom/ghost/newtype/bounded/safe-cast toolkit |
 | `tpt-for-assert-const` | 1 | yes | — | Compile-time assertions |
-| `tpt-for-contract` | 2 | yes | tpt-math-numeric | Pre/post/invariant/loop-invariant |
+| `tpt-for-contract` | 2 | yes | — | Pre/post/invariant/loop-invariant (self-contained; `tpt-math-numeric` composition documented) |
 | `tpt-for-witness` | 3 | yes | tpt-for-typestate | Witness types |
 | `tpt-for-refinement` | 3 | yes | tpt-for-contract | Refinement types |
-| `tpt-for-verified-algorithms` | 4 | no | tpt-for-contract | Verified algorithm implementations |
-| `tpt-for-verified-ode` | 4 | no | tpt-for-contract, tpt-sci-ode | Verified ODE solving |
-| `tpt-for-smt-lite` | 5 | no | (external SMT binding) | Lightweight SMT bridge |
+| `tpt-for-verified-algorithms` | 4 | no | tpt-for-contract | Verified algorithm implementations (gcd/clamp/binary-search/insertion-sort) |
+| `tpt-for-verified-ode` | 4 | no | tpt-for-contract, tpt-sci-ode | Verified ODE solving — **deferred** (needs cross-repo `tpt-sci-ode`) |
+| `tpt-for-smt-lite` | 5 | no | — | Lightweight SMT bridge: term/problem builder + SMT-LIB2 + minimal evaluator (ADR 0007: `rsmt2`/`z3` valid wrap targets) |
 | `tpt-for-proof-ast` | 6 | no | — | Proof AST representation |
 | `tpt-for-det-proptest` | 6 | no | — | Deterministic property-based testing |
 | `tpt-for-deterministic-sim` | 6 | no | — | Deterministic simulation harness |
@@ -38,10 +38,12 @@ primitives into one dedicated pillar. The authoritative design notes live in
 
 ## Status
 
-Phase 0 (bootstrap) and the no-internal-dependency crates are landing first.
-Crates whose build requires a cross-repo dependency that is not yet published
-(`tpt-math-numeric`, `tpt-sci-ode`) or an external-binding audit (`tpt-for-smt-lite`,
-ADR 0007) are scaffolded once those prerequisites resolve — see [`todo.md`](todo.md).
+Phases 0–6 are largely landed. `tpt-for-contract`, `tpt-for-witness`,
+`tpt-for-refinement`, `tpt-for-verified-algorithms`, and `tpt-for-smt-lite` are
+implemented and tested; the `no_std` crates build for `thumbv6m-none-eabi`.
+`tpt-for-verified-ode` remains **deferred** — it needs the cross-repo
+`tpt-sci-ode` (sibling `tpt-science` repo), which is not built yet. See
+[`todo.md`](todo.md) for the per-phase tracker.
 
 ## License
 
