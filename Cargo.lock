@@ -53,6 +53,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "tpt-for-verified-ode"
+version = "0.1.0"
+dependencies = [
+ "tpt-for-contract",
+]
+
+[[package]]
 name = "tpt-for-witness"
 version = "0.1.0"
 dependencies = [

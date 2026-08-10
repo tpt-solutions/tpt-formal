@@ -28,7 +28,7 @@ primitives into one dedicated pillar. The authoritative design notes live in
 | `tpt-for-witness` | 3 | yes | tpt-for-typestate | Witness types |
 | `tpt-for-refinement` | 3 | yes | tpt-for-contract | Refinement types |
 | `tpt-for-verified-algorithms` | 4 | no | tpt-for-contract | Verified algorithm implementations (gcd/clamp/binary-search/insertion-sort) |
-| `tpt-for-verified-ode` | 4 | no | tpt-for-contract, tpt-sci-ode | Verified ODE solving — **deferred** (needs cross-repo `tpt-sci-ode`) |
+| `tpt-for-verified-ode` | 4 | no | tpt-for-contract | Verified ODE solving — contract-guarded Euler/RK4 over `OdeSystem`; `tpt-sci-ode` is the designated high-performance backend to wrap later |
 | `tpt-for-smt-lite` | 5 | no | — | Lightweight SMT bridge: term/problem builder + SMT-LIB2 + minimal evaluator (ADR 0007: `rsmt2`/`z3` valid wrap targets) |
 | `tpt-for-proof-ast` | 6 | no | — | Proof AST representation |
 | `tpt-for-det-proptest` | 6 | no | — | Deterministic property-based testing |
@@ -44,6 +44,22 @@ implemented and tested; the `no_std` crates build for `thumbv6m-none-eabi`.
 `tpt-for-verified-ode` remains **deferred** — it needs the cross-repo
 `tpt-sci-ode` (sibling `tpt-science` repo), which is not built yet. See
 [`todo.md`](todo.md) for the per-phase tracker.
+
+## Dependency graph
+
+All crates are MIT OR Apache-2.0 and `no_std` where marked. Internal edges:
+
+```text
+tpt-for-typestate ─────► tpt-for-witness
+tpt-for-contract ──────► tpt-for-refinement
+tpt-for-contract ──────► tpt-for-verified-algorithms
+tpt-for-contract ──────► tpt-for-verified-ode
+tpt-for-assert-const ──► (compile-time only, no runtime deps)
+```
+
+`verified-ode` is designed to compose with the cross-repo `tpt-sci-ode`
+(sibling `tpt-science` repo) as a higher-order backend behind the same
+[`OdeSystem`](crates/tpt-for-verified-ode/src/lib.rs) contract surface.
 
 ## License
 

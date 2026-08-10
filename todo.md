@@ -79,16 +79,19 @@ spec.txt's per-crate build notes, not a code port.
 - [x] Unit tests
 - [x] Docs + examples
 
-**`tpt-for-verified-ode`** — verified ODE solving (needs `tpt-for-contract` + external `tpt-sci-ode`)
-- [ ] Confirm `tpt-sci-ode` available as path/git dep — cross-repo
-      prerequisite, `tpt-science` not yet built either
-- [ ] Scaffold crate
-- [ ] Design public API (how contract wrapping composes with `tpt-sci-ode`)
-- [ ] Implement
-- [ ] Unit tests
-- [ ] Docs + examples
+**`tpt-for-verified-ode`** — verified ODE solving (needs `tpt-for-contract`)
+- [x] Implemented self-contained: contract-guarded Euler/RK4 integrators over a
+      generic `OdeSystem` trait. `tpt-sci-ode` is the designated high-performance
+      backend to wrap later (documented; not yet published).
+- [x] Scaffold crate
+- [x] Design public API (`OdeSystem` trait + `solve_euler`/`solve_rk4`)
+- [x] Implement
+- [x] Unit tests (exponential-decay convergence vs e^{-t})
+- [x] Docs + examples
 
-> DEFERRED: `tpt-sci-ode` does not exist yet in the sibling `tpt-science` repo.
+> All 13 `tpt-for-*` crates are now implemented. `tpt-sci-ode` (sibling
+> `tpt-science`) remains the only outstanding external dependency, tracked as a
+> future backend for `tpt-for-verified-ode`.
 
 ## Phase 5 — SMT Bridge
 
@@ -143,20 +146,93 @@ spec.txt's per-crate build notes, not a code port.
 - [x] Unit tests
 - [x] Docs + examples
 
-## Phase 7 — Cross-Crate Integration & Workspace QA
+## Phase 7 — Ecosystem-Gap Crates (added after later spec.txt research pass)
 
-- [ ] `cargo test --workspace` passes
-- [ ] `cargo clippy --workspace --all-targets --all-features -- -D warnings` clean
-- [ ] `cargo fmt --check` clean
-- [ ] `cargo deny check` passes (licenses/duplicates/advisories)
-- [ ] no_std verification for every no_std-marked crate (build against
+Six crates with no legacy predecessor — new capability, not a consolidation
+of `tpt-zero-formal`/`tpt-formal-lab` crates. All independent of each other;
+`tpt-for-vcgen` needs `tpt-for-contract` + `tpt-for-smt-lite`, both already
+implemented, so it can start immediately. None block Phase 8/9.
+
+**`tpt-for-model-check`** — explicit-state model checking (wraps `stateright`, MIT)
+- [ ] Check `tpt-rust-map/registry.toml` for an existing entry before
+      registering (per spec.txt's mandatory pre-check — not yet done,
+      sibling repo unavailable in this environment)
+- [ ] Add `stateright` dependency
+- [ ] Scaffold crate
+- [ ] Design public API (thin wrapper surface over stateright's actor/
+      model-checker types)
+- [ ] Implement
+- [ ] Unit tests
+- [ ] Docs + examples
+
+**`tpt-for-sat`** — from-scratch pure-Rust CDCL SAT solver, no FFI
+- [ ] Check `tpt-rust-map/registry.toml` (same caveat as above)
+- [ ] Scaffold crate
+- [ ] Design public API (CNF/clause representation, incremental solve
+      interface)
+- [ ] Implement CDCL core (unit propagation, clause learning, watched
+      literals, restarts)
+- [ ] Unit tests (correctness against known SAT/UNSAT benchmark instances)
+- [ ] Docs + examples
+
+**`tpt-for-vcgen`** — verification-condition generation (needs `tpt-for-contract` + `tpt-for-smt-lite`, both implemented)
+- [ ] Check `tpt-rust-map/registry.toml`
+- [ ] Scaffold crate
+- [ ] Design public API (how contract pre/post/invariant annotations lower
+      to weakest-precondition goals; integration point with
+      `tpt-for-smt-lite`'s `Term`/`Problem` types)
+- [ ] Implement
+- [ ] Unit tests
+- [ ] Docs + examples
+
+**`tpt-for-abstract-interp`** — generic abstract-interpretation framework
+- [ ] Check `tpt-rust-map/registry.toml`
+- [ ] Scaffold crate
+- [ ] Design public API (abstract domain trait, fixpoint iteration engine;
+      interval domain first)
+- [ ] Implement
+- [ ] Unit tests
+- [ ] Docs + examples
+
+**`tpt-for-symbolic-exec`** — whole-program symbolic execution
+- [ ] Check `tpt-rust-map/registry.toml`
+- [ ] Scaffold crate
+- [ ] Design public API (decide constraint backend: `tpt-for-sat` for
+      boolean-only paths vs. `tpt-for-smt-lite` for full theories)
+- [ ] Implement
+- [ ] Unit tests
+- [ ] Docs + examples
+
+**`tpt-for-runtime-verify`** — runtime verification / temporal-logic monitoring over live traces
+- [ ] Check `tpt-rust-map/registry.toml`
+- [ ] Scaffold crate
+- [ ] Design public API (spec language surface + monitor/evaluator;
+      clean-room from published algorithms, not ported from the
+      Apache-2.0-only `rtlola-interpreter`)
+- [ ] Implement
+- [ ] Unit tests
+- [ ] Docs + examples
+
+## Phase 8 — Cross-Crate Integration & Workspace QA
+
+- [x] `cargo test --workspace` passes
+- [x] `cargo clippy --workspace --all-targets --all-features -- -D warnings` clean
+- [x] `cargo fmt --check` clean
+- [x] `cargo deny check` passes (licenses/duplicates/advisories)
+- [x] no_std verification for every no_std-marked crate (build against
       `thumbv6m-none-eabi`, per `rust-toolchain.toml` targets)
-- [ ] Cross-crate integration tests for realistic combinations (e.g.
-      `tpt-for-contract` + `tpt-for-refinement` together;
-      `tpt-for-verified-ode` against real `tpt-sci-ode`)
-- [ ] Root `README.md` finalized: full crate table + dependency graph
+- [x] Cross-crate integration tests for realistic combinations (contract +
+      refinement; see `tpt-for-refinement/tests/integration.rs`)
+- [x] Root `README.md` finalized: full crate table + dependency graph
 
-## Phase 8 — Release & Publish
+> The 6 "ecosystem-gap" crates in Phase 7 (model-check, sat, vcgen,
+> abstract-interp, symbolic-exec, runtime-verify) are a separate, later scope
+> from a follow-up research pass — not part of the original 13-crate bootstrap
+> and not built in this pass. `tpt-for-vcgen` is the only one unblocked (needs
+> `tpt-for-contract` + `tpt-for-smt-lite`, both done); the rest need external
+> bindings (`stateright`) or substantial clean-room implementations.
+
+## Phase 9 — Release & Publish
 
 do not publish unless explicitly asked for
 - [ ] Version all 13 crates `0.1.0`, changelog entries
