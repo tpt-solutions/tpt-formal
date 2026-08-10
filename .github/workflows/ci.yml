@@ -52,7 +52,7 @@ jobs:
       - run: |
           # ADR 0001: explicit -p flags for this repo's no_std = true crates,
           # NOT a blind --workspace build. Add each new no_std crate here.
-          cargo build --target thumbv6m-none-eabi -p tpt-for-typestate \
+          cargo build --target thumbv6m-none-eabi --no-default-features -p tpt-for-typestate \
             -p tpt-for-assert-const \
             -p tpt-for-witness \
             -p tpt-for-redundancy \

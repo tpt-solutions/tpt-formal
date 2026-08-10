@@ -1,11 +1,8 @@
+# Rust build artifacts
 /target
-**/target
-Cargo.lock
-*.pdb
 
-# Editor / OS
-.vscode/
+# Editor / OS noise
 .idea/
+.vscode/
 *.swp
 .DS_Store
-Thumbs.db

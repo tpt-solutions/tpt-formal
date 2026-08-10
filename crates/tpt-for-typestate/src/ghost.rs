@@ -76,10 +76,11 @@ impl<S: State, T> Stateful<S, T> {
     pub fn into_inner(self) -> T {
         self.value
     }
+}
 
-    /// Borrow the inner value.
+impl<S: State, T> AsRef<T> for Stateful<S, T> {
     #[inline]
-    pub fn as_ref(&self) -> &T {
+    fn as_ref(&self) -> &T {
         &self.value
     }
 }
@@ -121,13 +122,16 @@ impl<P, T> Ghost<P, T> {
     pub fn into_inner(self) -> T {
         self.value
     }
+}
 
-    /// Borrow the inner value.
+impl<P, T> AsRef<T> for Ghost<P, T> {
     #[inline]
-    pub fn as_ref(&self) -> &T {
+    fn as_ref(&self) -> &T {
         &self.value
     }
+}
 
+impl<P, T> Ghost<P, T> {
     /// Map the inner value, preserving the predicate `P`.
     ///
     /// # Safety

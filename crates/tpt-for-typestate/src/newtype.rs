@@ -23,9 +23,10 @@ pub trait Newtype: Sized {
 /// `PartialEq`/`Eq`/`Hash`/`Ord` derived and [`Newtype`] implemented.
 ///
 /// ```
-/// tpt_for_typestate::define_newtype!(Meters, f64);
-/// let m = Meters::from_inner(3.0);
-/// assert_eq!(m.into_inner(), 3.0);
+/// use tpt_for_typestate::newtype::Newtype;
+/// tpt_for_typestate::define_newtype!(Meters, u64);
+/// let m = Meters::from_inner(3);
+/// assert_eq!(m.into_inner(), 3);
 /// ```
 #[macro_export]
 macro_rules! define_newtype {

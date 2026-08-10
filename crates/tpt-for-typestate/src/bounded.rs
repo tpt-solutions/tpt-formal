@@ -62,9 +62,9 @@ impl<T: Copy + PartialOrd> Bounded<T> {
         self.max
     }
 
-    /// Clamp `value` into the same range and return a new bounded value.
+    /// Clamp `value` into this bounded range and return a new bounded value.
     #[inline]
-    pub fn clamp(&self, value: T) -> Self {
+    pub fn saturate(&self, value: T) -> Self {
         let v = if value < self.min {
             self.min
         } else if value > self.max {
@@ -89,24 +89,27 @@ impl<T: Copy + PartialOrd + fmt::Debug> fmt::Debug for Bounded<T> {
 
 /// A named, type-level bound for [`Checked`].
 ///
-/// Implement this to give a type `B` a compile-time-associated valid range.
-pub trait Bound: Copy + PartialOrd {
+/// Implementors associate a `Value` type together with its inclusive valid
+/// range. This lets a value's permitted interval be part of its type.
+pub trait Bound {
+    /// The underlying numeric type.
+    type Value: Copy + PartialOrd;
     /// Inclusive lower bound.
-    const MIN: Self;
+    const MIN: Self::Value;
     /// Inclusive upper bound.
-    const MAX: Self;
+    const MAX: Self::Value;
 }
 
 /// A value of a [`Bound`] type, guaranteed in range.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Checked<B: Bound> {
-    value: B,
+    value: B::Value,
 }
 
 impl<B: Bound> Checked<B> {
     /// Construct, returning `None` if `value` is outside `[B::MIN, B::MAX]`.
     #[inline]
-    pub fn new(value: B) -> Option<Self> {
+    pub fn new(value: B::Value) -> Option<Self> {
         if value >= B::MIN && value <= B::MAX {
             Some(Checked { value })
         } else {
@@ -120,18 +123,21 @@ impl<B: Bound> Checked<B> {
     ///
     /// `value` must satisfy `B::MIN <= value <= B::MAX`.
     #[inline]
-    pub unsafe fn new_unchecked(value: B) -> Self {
+    pub unsafe fn new_unchecked(value: B::Value) -> Self {
         Checked { value }
     }
 
     /// The contained value.
     #[inline]
-    pub fn get(&self) -> B {
+    pub fn get(&self) -> B::Value {
         self.value
     }
 }
 
-impl<B: Bound + fmt::Debug> fmt::Debug for Checked<B> {
+impl<B: Bound> fmt::Debug for Checked<B>
+where
+    B::Value: fmt::Debug,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Checked")
             .field("value", &self.value)
@@ -151,14 +157,15 @@ mod tests {
     }
 
     #[test]
-    fn bounded_clamps() {
+    fn bounded_saturates() {
         let b = Bounded::new(5u8, 0, 10).unwrap();
-        assert_eq!(b.clamp(20).get(), 10);
-        assert_eq!(b.clamp(-1i8 as u8).get(), 0);
+        assert_eq!(b.saturate(20).get(), 10);
+        assert_eq!(b.saturate(0).get(), 0);
     }
 
     struct Pct;
     impl Bound for Pct {
+        type Value = u8;
         const MIN: u8 = 0;
         const MAX: u8 = 100;
     }

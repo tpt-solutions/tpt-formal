@@ -1,0 +1,19 @@
+[package]
+name = "tpt-for-witness"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Witness types: values carrying compile-time proof that a predicate holds."
+
+[dependencies]
+tpt-for-typestate = { workspace = true }
+
+[features]
+default = ["std"]
+std = []
+alloc = []
+
+[lints]
+workspace = true

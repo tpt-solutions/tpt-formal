@@ -69,6 +69,7 @@ impl<T> Same for T {
 }
 
 #[cfg(test)]
+#[allow(clippy::eq_op)]
 mod tests {
     use super::*;
 

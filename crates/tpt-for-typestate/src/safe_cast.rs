@@ -29,7 +29,11 @@ impl CastError {
 
 impl fmt::Display for CastError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "safe cast from {} to {} out of range or lossy", self.from, self.to)
+        write!(
+            f,
+            "safe cast from {} to {} out of range or lossy",
+            self.from, self.to
+        )
     }
 }
 
@@ -158,9 +162,21 @@ mod tests {
 
     #[test]
     fn narrowing_rejects_out_of_range() {
-        assert_eq!(250u16.try_safe_cast::<u8>(), Err(CastError { from: "u16", to: "u8" }));
-        assert_eq!(10u16.try_safe_cast::<u8>(), Ok(10u8));
-        assert_eq!(70000u32.try_safe_cast::<u16>(), Err(CastError { from: "u32", to: "u16" }));
+        assert_eq!(
+            try_safe_cast::<u16, u8>(300),
+            Err(CastError {
+                from: "u16",
+                to: "u8"
+            })
+        );
+        assert_eq!(try_safe_cast::<u16, u8>(10), Ok(10u8));
+        assert_eq!(
+            try_safe_cast::<u32, u16>(70000),
+            Err(CastError {
+                from: "u32",
+                to: "u16"
+            })
+        );
     }
 
     #[test]

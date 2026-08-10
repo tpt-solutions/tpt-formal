@@ -17,8 +17,8 @@
 #[cfg(test)]
 extern crate std;
 
-pub mod phantom;
+pub mod bounded;
 pub mod ghost;
 pub mod newtype;
-pub mod bounded;
+pub mod phantom;
 pub mod safe_cast;
