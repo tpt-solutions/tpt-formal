@@ -4,9 +4,9 @@ Verification-condition generation (VCGen).
 
 Lowers design-by-contract annotations to verification conditions using the
 weakest-precondition (WP) calculus, then emits them as a `tpt-for-smt-lite`
-`Problem` so they can be discharged by an SMT solver. This is the bridge between
-`tpt-for-contract`'s `requires!`/`ensures!` surface and
-`tpt-for-smt-lite`'s solver-agnostic term language.
+`Problem` so they can be discharged by an SMT solver. This is the bridge between the
+`requires!`/`ensures!` contract style and `tpt-for-smt-lite`'s solver-agnostic term
+language. (Only depends on `tpt-for-smt-lite`; it does not use `tpt-for-contract`.)
 
 For a program `pre { body } post`, the generated VC is `pre ∧ wp(body, post)`,
 and the program is verified exactly when its *negation* is unsatisfiable.
@@ -45,9 +45,9 @@ No optional features. Depends on `tpt-for-smt-lite`.
 
 ## Integration
 
-Consumes `tpt-for-contract`'s contract vocabulary and produces obligations for
-`tpt-for-smt-lite`; together they form the automated verification pipeline in
-the workspace.
+Produces obligations for `tpt-for-smt-lite` and is itself wired into
+`tpt-for-smt-lite`'s SAT-backed decision tier; together they form the automated
+verification pipeline in the workspace.
 
 ## Status
 

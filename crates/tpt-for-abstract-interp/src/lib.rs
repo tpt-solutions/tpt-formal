@@ -259,6 +259,12 @@ impl Expr {
         match self {
             Expr::Const(c) => Interval::new(*c, *c),
             Expr::Var(v) => {
+                // Out-of-range variable: fall back to top (unknown), consistent
+                // with the crate's "unknown → top" philosophy. Never panics on
+                // malformed caller-supplied `VarId`s.
+                if *v >= state.len() {
+                    return Interval::top();
+                }
                 let i = state[*v];
                 if i.is_bottom() {
                     Interval::bottom()
@@ -426,10 +432,16 @@ impl Cfg {
         for s in &self.blocks[node].stmts {
             match s {
                 Stmt::Assign(v, e) => {
-                    state[*v] = e.eval(&state);
+                    // Write to an out-of-range variable is a no-op (never panics
+                    // on malformed caller input); reads already fall back to top.
+                    if *v < state.len() {
+                        state[*v] = e.eval(&state);
+                    }
                 }
                 Stmt::Assume(v, op, k) => {
-                    state[*v] = narrow(state[*v], *op, *k);
+                    if *v < state.len() {
+                        state[*v] = narrow(state[*v], *op, *k);
+                    }
                 }
             }
         }
@@ -471,29 +483,17 @@ pub fn analyze(cfg: &Cfg, entry: usize, init: Vec<Interval>) -> Option<Vec<Vec<I
     let mut state: Vec<Vec<Interval>> = vec![bottom.clone(); n];
     state[entry] = init.clone();
 
-    // Predecessors.
-    let mut preds: Vec<Vec<usize>> = vec![Vec::new(); n];
-    for (u, b) in cfg.blocks.iter().enumerate() {
-        for &v in &b.succ {
-            if v < n {
-                preds[v].push(u);
-            }
-        }
-    }
-
-    let mut work: Vec<usize> = (0..n).collect();
+    // Worklist fixpoint: seed the worklist at the entry only and rely solely
+    // on incremental push propagation. Each node's entry state (`state[node]`)
+    // is the value accumulated by predecessor pushes; `widen` is monotonic in
+    // the sense `widen(a, b) ⊇ a` always, so the accumulated value only ever
+    // grows. We deliberately do NOT recompute `state[node]` from predecessors
+    // on every visit: `widen` is not monotonic in its *first* argument, so a
+    // recompute can be strictly smaller than the value already established and
+    // break the ascending-chain guarantee the algorithm's soundness rests on.
+    let mut work: Vec<usize> = vec![entry];
     while let Some(node) = work.pop() {
-        let in_state = if node == entry {
-            init.clone()
-        } else {
-            let mut acc = bottom.clone();
-            for &p in &preds[node] {
-                let exit = cfg.transfer(p, &state[p]);
-                acc = acc.widen(&exit);
-            }
-            acc
-        };
-        state[node] = in_state.clone();
+        let in_state = state[node].clone();
         let exit = cfg.transfer(node, &in_state);
         for &s in &cfg.blocks[node].succ {
             if s >= n {
@@ -594,5 +594,55 @@ mod tests {
         let states = analyze(&cfg, 0, vec![Interval::bottom(), Interval::bottom()]).unwrap();
         assert_eq!(states[1][0], Interval::new(0, 0));
         assert_eq!(states[1][1], Interval::new(7, 7));
+    }
+
+    #[test]
+    fn diamond_merge_never_shrinks() {
+        // Two predecessors merge into one node with no back-edge:
+        //   entry: x = 0
+        //   a:     x = 1 ; b: x = 2
+        //   merge:  y = x
+        // The merge node's x must be the widening of both (a sound over-
+        // approximation), and must never shrink across fixpoint iterations even
+        // though `widen` is non-monotonic in its first argument.
+        let mut cfg = Cfg::new(2);
+        cfg.block(&[Stmt::assign(0, Expr::const_(0))], &[1, 2]); // entry
+        cfg.block(&[Stmt::assign(0, Expr::const_(1))], &[3]); // a
+        cfg.block(&[Stmt::assign(0, Expr::const_(2))], &[3]); // b
+        cfg.block(&[Stmt::assign(1, Expr::var(0))], &[]); // merge
+        let states = analyze(&cfg, 0, vec![Interval::bottom(), Interval::bottom()]).unwrap();
+        // The merge node's entry `x` is the widening of the two predecessor
+        // exits {1, 2}: a sound over-approximation that contains both values.
+        // (analyze returns *entry* states; `y = x` lives in the merge exit and
+        // only matters for successors, of which there are none here.)
+        let x = states[3][0];
+        assert!(x.lo() <= 1);
+        assert!(x.hi() >= 2 || x.is_top());
+        // The ascending chain must hold: nothing the fixpoint settles on can be
+        // a strict under-approximation of either predecessor's single value.
+        assert!(x.lo() <= 2);
+    }
+
+    #[test]
+    fn out_of_range_varid_is_safe() {
+        // A statement referencing a variable beyond `nvars` must not panic;
+        // reads fall back to top and the write is a no-op. The effect shows up
+        // in the successor's entry state.
+        let mut cfg = Cfg::new(1);
+        cfg.block(
+            &[
+                Stmt::assign(0, Expr::add(Expr::var(0), Expr::var(5))),
+                Stmt::assign(7, Expr::const_(9)),
+            ],
+            &[1],
+        );
+        cfg.block(&[], &[]);
+        let states = analyze(&cfg, 0, vec![Interval::new(3, 3)]).unwrap();
+        // entry var 0 = 3 + top(var 5) = a sound over-approximation (the unknown
+        // read widens the lower bound below 3); no panic on the out-of-range
+        // read or the out-of-range write.
+        assert!(!states[1][0].is_bottom());
+        assert!(states[1][0].lo() < 3);
+        assert!(states[1][0].hi() >= 3);
     }
 }

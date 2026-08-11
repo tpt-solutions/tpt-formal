@@ -15,3 +15,8 @@ categories = ["development-tools::testing", "rust-patterns"]
 
 [lints]
 workspace = true
+
+[[example]]
+name = "det_proptest_basic"
+path = "examples/basic.rs"
+

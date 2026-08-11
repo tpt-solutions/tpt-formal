@@ -20,3 +20,8 @@ alloc = []
 
 [lints]
 workspace = true
+
+[[example]]
+name = "assert_const_basic"
+path = "examples/basic.rs"
+

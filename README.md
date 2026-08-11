@@ -37,7 +37,7 @@ primitives into one dedicated pillar. The authoritative design notes live in
 | `tpt-for-trace-macros` | 6 | yes | — | Trace/instrumentation macros |
 | `tpt-for-model-check` | 7 | no | — | Explicit-state model checking (clean-room; `stateright` is a documented external backend) |
 | `tpt-for-sat` | 7 | no | — | From-scratch pure-Rust CDCL SAT solver (watched literals, 1UIP, restarts) |
-| `tpt-for-vcgen` | 7 | no | tpt-for-contract, tpt-for-smt-lite | Verification-condition generation (WP calculus → SMT-LIB2) |
+| `tpt-for-vcgen` | 7 | no | tpt-for-smt-lite | Verification-condition generation (WP calculus → SMT-LIB2) |
 | `tpt-for-abstract-interp` | 7 | no | — | Generic abstract interpretation: `AbstractDomain` trait, fixpoint engine, `Interval` domain |
 | `tpt-for-symbolic-exec` | 7 | no | tpt-for-smt-lite | Whole-program symbolic execution (div-by-zero / broken-assertion detection) |
 | `tpt-for-runtime-verify` | 7 | no | — | Runtime verification: clean-room temporal-logic monitor over live traces |
@@ -66,7 +66,6 @@ tpt-for-typestate ─────► tpt-for-witness
 tpt-for-contract ──────► tpt-for-refinement
 tpt-for-contract ──────► tpt-for-verified-algorithms
 tpt-for-contract ──────► tpt-for-verified-ode
-tpt-for-contract ─────► tpt-for-vcgen
 tpt-for-smt-lite ─────► tpt-for-vcgen
 tpt-for-smt-lite ─────► tpt-for-symbolic-exec
 tpt-for-assert-const ──► (compile-time only, no runtime deps)

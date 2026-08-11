@@ -15,3 +15,8 @@ categories = ["science", "development-tools::debugging", "rust-patterns"]
 
 [lints]
 workspace = true
+
+[[example]]
+name = "runtime_verify_basic"
+path = "examples/basic.rs"
+

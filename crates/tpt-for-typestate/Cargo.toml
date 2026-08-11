@@ -20,3 +20,8 @@ alloc = []
 
 [lints]
 workspace = true
+
+[[example]]
+name = "typestate_basic"
+path = "examples/basic.rs"
+

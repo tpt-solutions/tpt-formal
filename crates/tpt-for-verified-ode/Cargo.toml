@@ -16,3 +16,8 @@ tpt-for-contract = { workspace = true }
 
 [lints]
 workspace = true
+
+[[example]]
+name = "verified_ode_basic"
+path = "examples/basic.rs"
+

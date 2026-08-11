@@ -4,8 +4,9 @@
 //! Lowers design-by-contract annotations to verification conditions using the
 //! weakest-precondition (WP) calculus, then emits them as an
 //! [`smt_lite::Problem`] so they can be discharged by an SMT solver. This is the
-//! bridge between [`tpt_for_contract`]'s `requires!`/`ensures!` surface and
-//! [`tpt_for_smt_lite`]'s solver-agnostic term language.
+//! bridge between the `requires!`/`ensures!` contract style and
+//! [`tpt_for_smt_lite`]'s solver-agnostic term language. (Only depends on
+//! [`tpt_for_smt_lite`]; it does not use [`tpt_for_contract`].)
 //!
 //! For a program `pre { body } post`, the generated VC is
 //!
@@ -327,7 +328,10 @@ pub fn wp(body: &[Stmt], post: &BExpr) -> BExpr {
     for s in body.iter().rev() {
         q = match s {
             Stmt::Assign(v, e) => q.subst(v, e),
-            Stmt::Assume(c) => BExpr::and(c.clone(), q),
+            // Guarded-command rule: wp(assume c, Q) = c ⟹ Q, *not* c ∧ Q. An
+            // `assume` is a hypothesis that discharges the postcondition, not an
+            // extra proof obligation to be baked into the VC.
+            Stmt::Assume(c) => BExpr::implies(c.clone(), q),
             Stmt::Skip => q,
         };
     }
@@ -416,17 +420,15 @@ mod tests {
 
     #[test]
     fn assume_introduces_guard() {
-        // assume (x > 0); post: x > 0   → wp = (x>0) ∧ (x>0) = x>0 (free var)
-        // VC = true ∧ (x>0); ¬VC = ¬(x>0) has a free var → Inconclusive.
+        // assume (x > 0); post: x > 0
+        //   wp = (x>0) ⟹ (x>0) = true  →  VC = true ∧ true = true
+        //   ¬VC = false → Unsat → Verified (the free assumption cancels out).
         let spec = Spec {
             pre: BExpr::bool(true),
             post: BExpr::gt(Expr::var("x"), Expr::const_(0)),
         };
         let body = vec![Stmt::assume(BExpr::gt(Expr::var("x"), Expr::const_(0)))];
-        let problem = generate_vc(&spec, &body);
-        // The free variable must be declared in the problem.
-        assert!(!problem.declarations().is_empty());
-        assert_eq!(verify(&spec, &body), VcResult::Inconclusive);
+        assert_eq!(verify(&spec, &body), VcResult::Verified);
     }
 
     #[test]

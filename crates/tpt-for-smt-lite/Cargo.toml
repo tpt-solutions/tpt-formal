@@ -12,6 +12,12 @@ keywords = ["smt", "smt-lib", "solver", "formal-verification", "logic"]
 categories = ["science", "mathematics", "parsing"]
 
 [dependencies]
+tpt-for-sat = { path = "../tpt-for-sat" }
 
 [lints]
 workspace = true
+
+[[example]]
+name = "smt_lite_basic"
+path = "examples/basic.rs"
+

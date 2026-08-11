@@ -20,3 +20,8 @@ alloc = []
 
 [lints]
 workspace = true
+
+[[example]]
+name = "contract_basic"
+path = "examples/basic.rs"
+

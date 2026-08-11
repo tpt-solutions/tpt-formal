@@ -16,3 +16,8 @@ tpt-for-smt-lite = { workspace = true }
 
 [lints]
 workspace = true
+
+[[example]]
+name = "symbolic_exec_basic"
+path = "examples/basic.rs"
+

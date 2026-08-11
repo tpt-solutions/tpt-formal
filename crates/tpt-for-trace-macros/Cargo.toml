@@ -20,3 +20,8 @@ alloc = []
 
 [lints]
 workspace = true
+
+[[example]]
+name = "trace_macros_basic"
+path = "examples/basic.rs"
+

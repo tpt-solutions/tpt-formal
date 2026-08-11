@@ -27,6 +27,8 @@ use std::collections::HashMap;
 use std::string::{String, ToString};
 use std::vec::Vec;
 
+mod bool_abstract;
+
 /// A sort (value type) in the SMT universe.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Sort {
@@ -224,21 +226,23 @@ impl Term {
                 let b = b.eval(model)?;
                 Some(Value::Bool(a == b))
             }
-            Term::Neg(x) => eval_int(x, model).map(|i| Value::Int(-i)),
+            Term::Neg(x) => eval_int(x, model)
+                .and_then(|i| i.checked_neg())
+                .map(Value::Int),
             Term::Add(a, b) => {
                 let a = eval_int(a, model)?;
                 let b = eval_int(b, model)?;
-                Some(Value::Int(a + b))
+                a.checked_add(b).map(Value::Int)
             }
             Term::Sub(a, b) => {
                 let a = eval_int(a, model)?;
                 let b = eval_int(b, model)?;
-                Some(Value::Int(a - b))
+                a.checked_sub(b).map(Value::Int)
             }
             Term::Mul(a, b) => {
                 let a = eval_int(a, model)?;
                 let b = eval_int(b, model)?;
-                Some(Value::Int(a * b))
+                a.checked_mul(b).map(Value::Int)
             }
             Term::Lt(a, b) => {
                 let a = eval_int(a, model)?;
@@ -387,7 +391,10 @@ impl Problem {
             }
         }
         if unknown {
-            SatResult::Unknown
+            // The ground evaluator couldn't decide (free variables remain).
+            // Fall back to the sound boolean-abstraction tier: it can only
+            // upgrade `Unknown -> Unsat`, never unsoundly downgrade to `Sat`.
+            bool_abstract::decide(self)
         } else {
             SatResult::Sat
         }
@@ -464,5 +471,28 @@ mod tests {
         assert!(script.contains("(declare-const x Int)"));
         assert!(script.contains("(<= x 10)"));
         assert!(script.contains("(check-sat)"));
+    }
+
+    #[test]
+    fn boolean_abstraction_upgrades_unknown_to_unsat() {
+        // ¬((x > 0) ∨ ¬(x > 0)) has a free variable `x`, so the ground evaluator
+        // returns `Unknown`. Its boolean abstraction is the tautology's negation
+        // (a contradiction), so the CDCL tier upgrades it to `Unsat`.
+        let mut p = Problem::new();
+        p.declare_const("x", Sort::Int);
+        let atom = Term::var("x").gt(Term::int(0));
+        let formula = !(atom.clone().or(!atom));
+        p.assert(formula);
+        assert_eq!(p.check_sat(), SatResult::Unsat);
+    }
+
+    #[test]
+    fn boolean_abstraction_keeps_single_free_atom_unknown() {
+        // A single free-variable atom is satisfiable in the abstraction, so the
+        // tier must stay `Unknown` (soundness: never downgrade to `Sat`).
+        let mut p = Problem::new();
+        p.declare_const("x", Sort::Int);
+        p.assert(Term::var("x").gt(Term::int(0)));
+        assert_eq!(p.check_sat(), SatResult::Unknown);
     }
 }

@@ -103,22 +103,20 @@ impl SExpr {
         }
     }
 
-    fn to_term(&self) -> Term {
+    fn to_term(&self) -> Option<Term> {
         match self {
-            SExpr::Const(c) => Term::int(*c),
-            SExpr::Sym(s) => Term::var(s.clone()),
-            SExpr::Var(v) => Term::var(v.clone()),
-            SExpr::Add(a, b) => a.to_term() + b.to_term(),
-            SExpr::Sub(a, b) => a.to_term() - b.to_term(),
-            SExpr::Mul(a, b) => a.to_term() * b.to_term(),
-            SExpr::Div(_a, b) => {
-                // Only the ground evaluator is used for feasibility; conditions
-                // and denominators must be division-free. A real SMT backend
-                // would emit `(div a b)`.
-                let _ = b.to_term();
-                panic!("division in an SMT condition is unsupported by the ground backend");
+            SExpr::Const(c) => Some(Term::int(*c)),
+            SExpr::Sym(s) => Some(Term::var(s.clone())),
+            SExpr::Var(v) => Some(Term::var(v.clone())),
+            SExpr::Add(a, b) => Some(a.to_term()? + b.to_term()?),
+            SExpr::Sub(a, b) => Some(a.to_term()? - b.to_term()?),
+            SExpr::Mul(a, b) => Some(a.to_term()? * b.to_term()?),
+            SExpr::Div(_a, _b) => {
+                // The ground backend cannot represent division; callers treat
+                // `None` as conservatively feasible rather than panicking.
+                None
             }
-            SExpr::Neg(a) => -a.to_term(),
+            SExpr::Neg(a) => Some(-a.to_term()?),
         }
     }
 }
@@ -206,17 +204,17 @@ impl SCond {
         }
     }
 
-    fn to_term(&self) -> Term {
+    fn to_term(&self) -> Option<Term> {
         match self {
-            SCond::True => Term::bool(true),
-            SCond::Eq(a, b) => a.to_term().equals(b.to_term()),
-            SCond::Lt(a, b) => a.to_term().lt(b.to_term()),
-            SCond::Le(a, b) => a.to_term().le(b.to_term()),
-            SCond::Gt(a, b) => a.to_term().gt(b.to_term()),
-            SCond::Ge(a, b) => a.to_term().ge(b.to_term()),
-            SCond::Not(c) => !c.to_term(),
-            SCond::And(a, b) => a.to_term().and(b.to_term()),
-            SCond::Or(a, b) => a.to_term().or(b.to_term()),
+            SCond::True => Some(Term::bool(true)),
+            SCond::Eq(a, b) => Some(a.to_term()?.equals(b.to_term()?)),
+            SCond::Lt(a, b) => Some(a.to_term()?.lt(b.to_term()?)),
+            SCond::Le(a, b) => Some(a.to_term()?.le(b.to_term()?)),
+            SCond::Gt(a, b) => Some(a.to_term()?.gt(b.to_term()?)),
+            SCond::Ge(a, b) => Some(a.to_term()?.ge(b.to_term()?)),
+            SCond::Not(c) => Some(!c.to_term()?),
+            SCond::And(a, b) => Some(a.to_term()?.and(b.to_term()?)),
+            SCond::Or(a, b) => Some(a.to_term()?.or(b.to_term()?)),
         }
     }
 }
@@ -315,7 +313,13 @@ fn feasible(pc: &[SCond], extra: &SCond) -> bool {
         problem.declare_const(s.clone(), Sort::Int);
     }
     let conj = SCond::and_conjunction(pc, extra);
-    problem.assert(conj.to_term());
+    let term = match conj.to_term() {
+        Some(t) => t,
+        // Not representable by the ground backend (e.g. a division in the
+        // condition) — treat conservatively as feasible.
+        None => return true,
+    };
+    problem.assert(term);
     match problem.check_sat() {
         smt::SatResult::Unsat => false,
         smt::SatResult::Sat | smt::SatResult::Unknown => true,
@@ -345,6 +349,23 @@ fn record_div(denom: &SExpr, pc: &[SCond], violations: &mut Vec<Violation>) {
     }
 }
 
+/// Collect the denominator of every `Div` node in an expression tree. A nested
+/// division like `(10/x) + 1` must have both (here, just the `x`) denominators
+/// checked for zero, not only the outermost one.
+fn collect_divs(e: &SExpr, out: &mut Vec<SExpr>) {
+    match e {
+        SExpr::Const(_) | SExpr::Sym(_) | SExpr::Var(_) => {}
+        SExpr::Add(a, b) | SExpr::Sub(a, b) | SExpr::Mul(a, b) | SExpr::Div(a, b) => {
+            if let SExpr::Div(_, d) = e {
+                out.push((**d).clone());
+            }
+            collect_divs(a, out);
+            collect_divs(b, out);
+        }
+        SExpr::Neg(a) => collect_divs(a, out),
+    }
+}
+
 fn exec(
     stmts: &[SStmt],
     store: &HashMap<String, SExpr>,
@@ -355,30 +376,39 @@ fn exec(
     let mut store = store.clone();
     let mut pc = pc.to_vec();
 
-    for stmt in stmts {
+    for (idx, stmt) in stmts.iter().enumerate() {
         match stmt {
             SStmt::Assign(v, e) => {
                 let ev = eval(e, &store);
-                if let SExpr::Div(_, d) = &ev {
+                // Check every division in the (possibly nested) expression, not
+                // only one whose entire RHS is a `Div`.
+                let mut divs = Vec::new();
+                collect_divs(&ev, &mut divs);
+                for d in &divs {
                     record_div(d, &pc, violations);
                 }
                 store.insert(v.to_string(), ev);
             }
             SStmt::If(cond, then_b, else_b) => {
+                // The statements after this `If` in the enclosing block must run
+                // on *both* branches, so concatenate the continuation into each.
+                let cont: Vec<SStmt> = stmts[idx + 1..].to_vec();
                 if feasible(&pc, cond) {
-                    let st = store.clone();
+                    let mut tb = then_b.clone();
+                    tb.extend(cont.iter().cloned());
                     let mut p = pc.clone();
                     p.push(cond.clone());
-                    exec(then_b, &st, &p, violations, explored);
+                    exec(&tb, &store, &p, violations, explored);
                 }
                 let not_cond = SCond::not(cond.clone());
                 if feasible(&pc, &not_cond) {
-                    let st = store.clone();
+                    let mut eb = else_b.clone();
+                    eb.extend(cont.iter().cloned());
                     let mut p = pc.clone();
                     p.push(not_cond);
-                    exec(else_b, &st, &p, violations, explored);
+                    exec(&eb, &store, &p, violations, explored);
                 }
-                // Paths with neither branch feasible are dead; skip.
+                // Both branches already include the continuation; stop here.
                 return;
             }
             SStmt::Assert(cond) => {
@@ -484,6 +514,22 @@ mod tests {
     }
 
     #[test]
+    fn repeated_atom_contradiction_pruned_by_sat() {
+        // assume(x > 0); assume(¬(x > 0)); assert(false);
+        // The ground evaluator cannot decide the contradiction (free `x`), but
+        // the SAT-backed tier sees `(x>0) ∧ ¬(x>0)` is a contradiction and
+        // prunes the infeasible path, so the assertion is never reached.
+        let prog = vec![
+            SStmt::assume(SCond::gt(SExpr::sym("x"), SExpr::const_(0))),
+            SStmt::assume(SCond::not(SCond::gt(SExpr::sym("x"), SExpr::const_(0)))),
+            SStmt::assert(SCond::eq(SExpr::const_(0), SExpr::const_(1))),
+        ];
+        let r = run(&prog);
+        assert_eq!(r.paths_explored, 0);
+        assert!(r.violations.is_empty());
+    }
+
+    #[test]
     fn path_branching_explores_both() {
         // Free symbolic condition `x > 0` → both branches are feasible, so the
         // executor must explore each (no assertions/divisions inside, so no
@@ -496,5 +542,61 @@ mod tests {
         let r = run(&prog);
         assert!(r.violations.is_empty());
         assert_eq!(r.paths_explored, 2);
+    }
+
+    #[test]
+    fn if_with_trailing_statement_runs() {
+        // An `if` must not discard statements after it. The trailing division
+        // must be reached on *both* branches: with `x` free, `x == 0` is
+        // feasible on each path, so we expect one `DivByZero` per branch.
+        // (Before the fix the trailing statement was never executed, giving 0.)
+        let prog = vec![
+            SStmt::if_then_else(
+                SCond::gt(SExpr::sym("x"), SExpr::const_(0)),
+                vec![SStmt::assign("z", SExpr::const_(-1))],
+                vec![SStmt::assign("z", SExpr::const_(1))],
+            ),
+            SStmt::assign("w", SExpr::div(SExpr::const_(10), SExpr::sym("x"))),
+        ];
+        let r = run(&prog);
+        assert_eq!(r.violations.len(), 2);
+        assert!(r
+            .violations
+            .iter()
+            .all(|v| matches!(v.kind, ViolationKind::DivByZero)));
+    }
+
+    #[test]
+    fn nested_div_checked() {
+        // z = (10 / x) + 1  → the inner denominator `x` must be checked, not
+        // only a top-level `Div` assignment.
+        let prog = vec![SStmt::assign(
+            "z",
+            SExpr::add(
+                SExpr::div(SExpr::const_(10), SExpr::sym("x")),
+                SExpr::const_(1),
+            ),
+        )];
+        let r = run(&prog);
+        assert_eq!(r.violations.len(), 1);
+        assert!(matches!(r.violations[0].kind, ViolationKind::DivByZero));
+    }
+
+    #[test]
+    fn div_result_in_condition_no_panic() {
+        // z = 10 / x;  assert(z > 0);  → the division result flows into the
+        // later condition. This used to panic in `to_term`; now it must complete
+        // conservatively (the `DivByZero` is still reported, the assert is
+        // checked without aborting the process).
+        let prog = vec![
+            SStmt::assign("z", SExpr::div(SExpr::const_(10), SExpr::sym("x"))),
+            SStmt::assert(SCond::gt(SExpr::var("z"), SExpr::const_(0))),
+        ];
+        let r = run(&prog);
+        assert!(!r.violations.is_empty());
+        assert!(r
+            .violations
+            .iter()
+            .any(|v| matches!(v.kind, ViolationKind::DivByZero)));
     }
 }

@@ -16,3 +16,8 @@ tpt-for-smt-lite = { workspace = true }
 
 [lints]
 workspace = true
+
+[[example]]
+name = "vcgen_basic"
+path = "examples/basic.rs"
+

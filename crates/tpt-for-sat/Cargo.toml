@@ -13,5 +13,12 @@ categories = ["algorithms", "science", "mathematics"]
 
 [dependencies]
 
+[dev-dependencies]
+tpt-for-det-proptest = { path = "../tpt-for-det-proptest" }
+
+[[example]]
+name = "sat_basic"
+path = "examples/basic.rs"
+
 [lints]
 workspace = true

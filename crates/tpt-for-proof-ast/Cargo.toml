@@ -15,3 +15,8 @@ categories = ["science", "mathematics", "data-structures"]
 
 [lints]
 workspace = true
+
+[[example]]
+name = "proof_ast_basic"
+path = "examples/basic.rs"
+

@@ -22,7 +22,7 @@
 //!     &[-1, 2],
 //!     &[-2, 3],
 //!     &[-3],
-//! ]);
+//! ]).unwrap();
 //! let mut solver = Solver::new(cnf);
 //! assert_eq!(solver.solve(), SatResult::Unsat);
 //! ```
@@ -119,20 +119,38 @@ impl Cnf {
     }
 
     /// Build a CNF from a variable count and a list of clauses, each given as a
-    /// slice of DIMACS integers (positive/negative, `0` not allowed here).
-    pub fn from_lits(vars: usize, clauses: &[&[i32]]) -> Cnf {
+    /// slice of DIMACS integers (positive/negative).
+    ///
+    /// Returns `None` on malformed input rather than panicking: a `0` literal
+    /// (the DIMACS clause terminator) or a literal referencing a variable `>=
+    /// vars` is rejected. Use `.unwrap()` only on fixtures you control.
+    pub fn from_lits(vars: usize, clauses: &[&[i32]]) -> Option<Cnf> {
         let mut out = Cnf {
             vars,
             clauses: Vec::with_capacity(clauses.len()),
         };
         for c in clauses {
-            let lits: Vec<Lit> = c.iter().map(|&x| Lit::from_dimacs(x)).collect();
+            let mut lits: Vec<Lit> = Vec::with_capacity(c.len());
+            for &x in c.iter() {
+                if x == 0 {
+                    return None;
+                }
+                let var = if x > 0 {
+                    (x - 1) as usize
+                } else {
+                    (-x - 1) as usize
+                };
+                if var >= vars {
+                    return None;
+                }
+                lits.push(Lit::new(var as Var, x < 0));
+            }
             out.clauses.push(Clause {
                 lits,
                 learnt: false,
             });
         }
-        out
+        Some(out)
     }
 }
 
@@ -294,16 +312,12 @@ impl Solver {
                         // Satisfied via the other watched literal.
                         kept.push(w);
                     }
-                    Some(false) => {
-                        // Both watched literals false → conflict.
-                        kept.push(w);
-                        conflict = Some(cref);
-                        for r in ws.drain(i..) {
-                            kept.push(r);
-                        }
-                        break;
-                    }
-                    None => {
+                    _ => {
+                        // The other watched literal is false or unassigned. Before
+                        // concluding conflict/unit we must check whether a
+                        // *non-watched* literal already satisfies the clause —
+                        // otherwise a satisfied clause is mis-reported as a conflict
+                        // (unsound `Unsat`) or the watch is not relocated.
                         let c_len = self.clauses[cref].lits.len();
                         let mut found = None;
                         for k in 0..c_len {
@@ -326,9 +340,14 @@ impl Solver {
                                 });
                             }
                             None => {
+                                // No satisfying literal remains. If the other watch
+                                // is false this is a real conflict; if it is
+                                // unassigned, unit-propagate it (and establish the
+                                // position-0 reason invariant `analyze()` relies on).
                                 let other = self.clauses[cref].lits[1 - slot];
+                                self.clauses[cref].lits.swap(0, 1 - slot);
                                 kept.push(w);
-                                if !self.enqueue(other, Some(cref)) {
+                                if other_val == Some(false) || !self.enqueue(other, Some(cref)) {
                                     conflict = Some(cref);
                                     for r in ws.drain(i..) {
                                         kept.push(r);
@@ -530,7 +549,7 @@ mod tests {
     #[test]
     fn simple_sat() {
         // (x ∨ y) ∧ (¬x ∨ y) ∧ (x ∨ ¬y)  → SAT (x=true,y=true)
-        let cnf = Cnf::from_lits(2, &[&[1, 2], &[-1, 2], &[1, -2]]);
+        let cnf = Cnf::from_lits(2, &[&[1, 2], &[-1, 2], &[1, -2]]).unwrap();
         let mut s = Solver::new(cnf);
         assert_eq!(s.solve(), SatResult::Sat);
         assert!(s.value(0).unwrap() && s.value(1).unwrap());
@@ -539,7 +558,7 @@ mod tests {
     #[test]
     fn simple_unsat() {
         // (x) ∧ (¬x)  → UNSAT
-        let cnf = Cnf::from_lits(1, &[&[1], &[-1]]);
+        let cnf = Cnf::from_lits(1, &[&[1], &[-1]]).unwrap();
         let mut s = Solver::new(cnf);
         assert_eq!(s.solve(), SatResult::Unsat);
     }
@@ -547,7 +566,7 @@ mod tests {
     #[test]
     fn unit_propagation_chain() {
         // (x) ∧ (¬x ∨ y) ∧ (¬y ∨ z) → SAT with x,y,z true
-        let cnf = Cnf::from_lits(3, &[&[1], &[-1, 2], &[-2, 3]]);
+        let cnf = Cnf::from_lits(3, &[&[1], &[-1, 2], &[-2, 3]]).unwrap();
         let mut s = Solver::new(cnf);
         assert_eq!(s.solve(), SatResult::Sat);
         assert!(s.value(0).unwrap() && s.value(1).unwrap() && s.value(2).unwrap());
@@ -556,7 +575,7 @@ mod tests {
     #[test]
     fn pigeonhole_two() {
         // (p0) (p1) (¬p0 ∨ ¬p1)  → UNSAT
-        let cnf = Cnf::from_lits(2, &[&[1], &[2], &[-1, -2]]);
+        let cnf = Cnf::from_lits(2, &[&[1], &[2], &[-1, -2]]).unwrap();
         let mut s = Solver::new(cnf);
         assert_eq!(s.solve(), SatResult::Unsat);
     }
@@ -564,7 +583,7 @@ mod tests {
     #[test]
     fn schur_like_sat() {
         // (a ∨ b) ∧ (¬a ∨ c) ∧ (¬b ∨ ¬c) → SAT
-        let cnf = Cnf::from_lits(3, &[&[1, 2], &[-1, 3], &[-2, -3]]);
+        let cnf = Cnf::from_lits(3, &[&[1, 2], &[-1, 3], &[-2, -3]]).unwrap();
         let mut s = Solver::new(cnf);
         assert_eq!(s.solve(), SatResult::Sat);
         let m = s.model();
@@ -580,7 +599,7 @@ mod tests {
 
     #[test]
     fn empty_clause_unsat() {
-        let cnf = Cnf::from_lits(0, &[&[]]);
+        let cnf = Cnf::from_lits(0, &[&[]]).unwrap();
         let mut s = Solver::new(cnf);
         assert_eq!(s.solve(), SatResult::Unsat);
     }
@@ -592,9 +611,52 @@ mod tests {
         let cnf = Cnf::from_lits(
             3,
             &[&[1, 2], &[1, -2], &[-1, 3], &[-1, -3], &[2, 3], &[-2, -3]],
-        );
+        )
+        .unwrap();
         let mut s = Solver::new(cnf);
         // (x∨y)(x∨¬y) forces x; (¬x∨z)(¬x∨¬z) forces ¬x → conflict
         assert_eq!(s.solve(), SatResult::Unsat);
+    }
+
+    #[test]
+    fn conflict_analysis_uses_position_zero_invariant() {
+        // UNSAT that forces `propagate()` to unit-implied a literal whose
+        // reason clause has the falsified watch at index 0 (`slot == 0`),
+        // so the implied literal lands at index 1. If `analyze()`'s
+        // "asserted literal at position 0" invariant is not established,
+        // resolution through that reason clause drops a real literal and the
+        // solver can emit an unsound learned clause.
+        //
+        // p ; (¬r) ; (¬p ∨ q ∨ r) ⇒ q ; (¬q ∨ s) ⇒ s ; (¬s ∨ t) ⇒ t ;
+        // (¬t ∨ ¬u) with u ; contradiction t. The reason chain for q runs
+        // through the length-3 clause `(¬p ∨ q ∨ r)`, whose falsified watch is
+        // at index 0 — exactly the path `analyze()` mishandles without the
+        // position-0 invariant.
+        let cnf = Cnf::from_lits(
+            6,
+            &[
+                &[1],        // p
+                &[-3],       // ¬r
+                &[-1, 2, 3], // (¬p ∨ q ∨ r)
+                &[-2, 4],    // (¬q ∨ s)
+                &[-4, 5],    // (¬s ∨ t)
+                &[-5, -6],   // (¬t ∨ ¬u)
+                &[6],        // u
+            ],
+        )
+        .unwrap();
+        let mut s = Solver::new(cnf);
+        assert_eq!(s.solve(), SatResult::Unsat);
+    }
+
+    #[test]
+    fn from_lits_rejects_malformed() {
+        // `0` is the DIMACS clause terminator, not a literal.
+        assert!(Cnf::from_lits(2, &[&[0]]).is_none());
+        // var index `>= vars` is out of range.
+        assert!(Cnf::from_lits(2, &[&[1, -3]]).is_none());
+        assert!(Cnf::from_lits(1, &[&[-2]]).is_none());
+        // well-formed input is accepted.
+        assert!(Cnf::from_lits(3, &[&[1], &[-2, 3]]).is_some());
     }
 }

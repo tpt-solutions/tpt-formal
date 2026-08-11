@@ -48,10 +48,16 @@ version = "0.1.0"
 [[package]]
 name = "tpt-for-sat"
 version = "0.1.0"
+dependencies = [
+ "tpt-for-det-proptest",
+]
 
 [[package]]
 name = "tpt-for-smt-lite"
 version = "0.1.0"
+dependencies = [
+ "tpt-for-sat",
+]
 
 [[package]]
 name = "tpt-for-symbolic-exec"

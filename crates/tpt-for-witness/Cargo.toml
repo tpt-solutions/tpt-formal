@@ -21,3 +21,8 @@ alloc = []
 
 [lints]
 workspace = true
+
+[[example]]
+name = "witness_basic"
+path = "examples/basic.rs"
+

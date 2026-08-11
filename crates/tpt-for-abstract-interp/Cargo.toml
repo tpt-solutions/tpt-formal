@@ -15,3 +15,8 @@ categories = ["science", "mathematics", "development-tools::debugging"]
 
 [lints]
 workspace = true
+
+[[example]]
+name = "abstract_interp_basic"
+path = "examples/basic.rs"
+

@@ -228,6 +228,67 @@ implemented, so it can start immediately. None block Phase 8/9.
 - [x] Root `README.md` finalized: full crate table + dependency graph
 
 
+## Phase 10 — Correctness/Security Audit Follow-Up (2026-08-11)
+
+A full-workspace review found no literal stubs (`todo!()`/`unimplemented!()`), but a deep
+read of the six Phase 7 crates plus a security audit surfaced real algorithmic bugs (some
+masked by tests that assert the buggy behavior), one memory-safety bug, and several
+panic-as-DoS entry points. Tracked here per-fix; see
+`C:\Users\Phillip\.claude\plans\review-project-fix-any-nifty-meadow.md` for full detail.
+
+**Correctness / soundness fixes**
+- [x] `tpt-for-sat`: `propagate()`'s unit-propagation branch doesn't establish the
+      "asserted literal at position 0 of its reason clause" invariant `analyze()` relies
+      on — swap the implied literal into position 0 before enqueueing; add a regression
+      test that forces the buggy code path
+- [x] `tpt-for-abstract-interp`: `analyze()`'s "pull" recompute-from-predecessors
+      unconditionally overwrites `state[node]`, which can shrink it since `widen` isn't
+      monotonic in its first argument — remove the pull mechanism, rely solely on the
+      incremental push/worklist propagation seeded at `[entry]`; add a diamond-merge test
+- [x] `tpt-for-runtime-verify`: `Globally` returns `Satisfied` instead of `Inconclusive`
+      for a finite prefix with no violation — fix to always return `None`; correct the
+      `globally_violated` test assertion
+- [x] `tpt-for-vcgen`: `wp(Assume(c), q)` uses `c ∧ q` instead of the correct `c ⟹ q` —
+      fix to `BExpr::implies`; correct the `assume_introduces_guard` test to demonstrate
+      the now-correct `Verified` result; fix the doc/README claim that vcgen depends on
+      `tpt-for-contract` (it doesn't — only `tpt-for-smt-lite`)
+- [x] `tpt-for-symbolic-exec`: (a) `exec`'s `If` arm unconditionally returns, dropping every
+      statement after the `If` in the enclosing block — fix via indexed iteration +
+      continuation-concatenation into each branch; (b) nested `Div` (e.g. `z = 10/x + 1`)
+      is never checked for div-by-zero — add a recursive `collect_divs` walk; (c) using a
+      division result in a later condition panics via `SExpr::to_term()` — change
+      `to_term()` to return `Option<Term>`, treat `None` as conservatively feasible like
+      `Unknown`. Add regression tests for all three.
+- [x] `tpt-for-trace-macros`: `RingTrace`'s global tracer manufactures an aliased `&mut`
+      from a raw pointer with `Relaxed` ordering and no synchronization — real UB/data
+      race reachable from ordinary multithreaded code with zero caller `unsafe`. Redesign
+      around a `std::sync::Mutex`-protected static; collapse `RingTrace::new().install()`
+      into `RingTrace::install(capacity) -> &'static RingTrace`; update the ring test.
+
+**Security-audit hardening (panic-as-DoS on malformed input)**
+- [x] `tpt-for-sat`: `Cnf::from_lits` doesn't validate var indices / rejects DIMACS `0` via
+      panic — validate inline, return `Option<Cnf>`
+- [x] `tpt-for-smt-lite`: `Term::eval`'s raw `i64` arithmetic can overflow-panic (release
+      profile has `overflow-checks = true`) — switch to `checked_*` ops, propagate `None`
+- [x] `tpt-for-abstract-interp`: `Expr::eval`/`Cfg::transfer` index directly by a
+      caller-supplied `VarId` with no bounds check — guard both read (fall back to `top`)
+      and write (no-op) sites
+- [x] `tpt-for-symbolic-exec`: covered by the `Option<Term>` fix above
+
+**Innovative additions**
+- [x] Wire `tpt-for-sat` into `tpt-for-smt-lite::Problem::check_sat()` as a sound,
+      one-directional boolean-abstraction (Tseitin → CNF → CDCL) decision tier for
+      formulas the ground evaluator can't decide — upgrades `Unknown → Unsat` only, never
+      unsoundly downgrades. Automatically benefits `tpt-for-vcgen::verify()` and
+      `tpt-for-symbolic-exec`'s `feasible()`. Add tests in all three crates.
+- [x] Add `examples/basic.rs` to all 19 crates (adapt each crate's existing top-of-file
+      doctest into a standalone runnable example)
+- [x] Add a differential/property test for `tpt-for-sat` using `tpt-for-det-proptest`:
+      random small CNFs checked against a brute-force truth-table oracle — direct
+      regression guard for the conflict-analysis fix above
+- [x] Add a `cargo audit` (RustSec) job to `.github/workflows/ci.yml` alongside the
+      existing `cargo-deny` job
+
 ## Phase 9 — Release & Publish
 
 do not publish unless explicitly asked for

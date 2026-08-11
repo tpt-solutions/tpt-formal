@@ -15,3 +15,8 @@ categories = ["science", "mathematics", "algorithms"]
 
 [lints]
 workspace = true
+
+[[example]]
+name = "model_check_basic"
+path = "examples/basic.rs"
+

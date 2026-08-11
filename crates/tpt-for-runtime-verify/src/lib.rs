@@ -24,7 +24,9 @@
 //! mon.observe(&Step::from_names(["req"]));
 //! assert_eq!(mon.verdict(), Verdict::Inconclusive); // ack not seen yet
 //! mon.observe(&Step::from_names(["ack"]));
-//! assert_eq!(mon.verdict(), Verdict::Satisfied);
+//! // The finite prefix is violation-free, but `G` can never be *confirmed* by
+//! // a finite prefix — the future could still break it.
+//! assert_eq!(mon.verdict(), Verdict::Inconclusive);
 //! ```
 
 use std::collections::HashSet;
@@ -311,12 +313,11 @@ fn eval(f: &Formula, t: &Trace, i: usize) -> Option<bool> {
                     Some(true) => {}
                 }
             }
-            // No violation and no open question across the observed prefix.
-            if i >= n {
-                None
-            } else {
-                Some(true)
-            }
+            // No violation was observed across the observed prefix, but a safety
+            // property `G φ` can only be *refuted* from a finite prefix — never
+            // *confirmed*. The future could still violate it, so the verdict is
+            // always inconclusive here (symmetric with `Eventually`).
+            None
         }
         Formula::Eventually(g) => {
             for j in i..n {
@@ -387,10 +388,11 @@ mod tests {
         t.push(step(&["ok"]));
         t.push(step(&["bad"]));
         assert_eq!(Monitor::check(&spec, &t), Verdict::Violated);
-        // And with no violation → satisfied over the finite prefix.
+        // And with no violation → inconclusive over the finite prefix (a safety
+        // property can never be confirmed by a finite prefix).
         let mut t2 = Trace::new();
         t2.push(step(&["ok"]));
-        assert_eq!(Monitor::check(&spec, &t2), Verdict::Satisfied);
+        assert_eq!(Monitor::check(&spec, &t2), Verdict::Inconclusive);
     }
 
     #[test]
@@ -403,7 +405,8 @@ mod tests {
         mon.observe(&step(&["req"]));
         assert_eq!(mon.verdict(), Verdict::Inconclusive);
         mon.observe(&step(&["ack"]));
-        assert_eq!(mon.verdict(), Verdict::Satisfied);
+        // The finite prefix is violation-free, but `G` can never be confirmed.
+        assert_eq!(mon.verdict(), Verdict::Inconclusive);
 
         // A request that never gets an ack: once the trace ends with no ack,
         // the nested F ack is inconclusive, so G remains inconclusive.
@@ -453,8 +456,9 @@ mod tests {
     fn incremental_monitor() {
         let spec = Formula::globally(Formula::atom("ok"));
         let mut mon = Monitor::new(spec);
+        // A finite violation-free prefix is inconclusive, never `Satisfied`.
         mon.observe(&step(&["ok"]));
-        assert_eq!(mon.verdict(), Verdict::Satisfied);
+        assert_eq!(mon.verdict(), Verdict::Inconclusive);
         mon.observe(&step(&["nope"]));
         assert_eq!(mon.verdict(), Verdict::Violated);
     }

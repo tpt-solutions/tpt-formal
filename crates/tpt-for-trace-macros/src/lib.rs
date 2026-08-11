@@ -129,6 +129,7 @@ mod ring {
     use super::*;
     use std::boxed::Box;
     use std::string::{String, ToString};
+    use std::sync::Mutex;
     use std::vec::Vec;
 
     /// A captured trace record.
@@ -142,77 +143,92 @@ mod ring {
         pub msg: String,
     }
 
-    /// A fixed-capacity ring buffer that installs itself as the global tracer.
-    pub struct RingTrace {
+    /// The shared, mutex-protected ring state behind the static.
+    struct RingState {
         records: Vec<Record>,
         capacity: usize,
         seq: u64,
     }
 
-    static RING: AtomicUsize = AtomicUsize::new(0);
+    static RING: Mutex<Option<RingState>> = Mutex::new(None);
 
     fn ring_tracer(target: &str, msg: &str) {
-        let p = RING.load(Ordering::Relaxed);
-        if p == 0 {
-            return;
-        }
-        // Safe: the stored pointer is a `&mut RingTrace` from `install`.
-        let ring = unsafe { &mut *(p as *mut RingTrace) };
-        ring.records.push(Record {
-            seq: ring.seq,
-            target: target.to_string(),
-            msg: msg.to_string(),
-        });
-        ring.seq += 1;
-        if ring.records.len() > ring.capacity {
-            ring.records.remove(0);
+        if let Ok(mut guard) = RING.lock() {
+            if let Some(state) = guard.as_mut() {
+                state.records.push(Record {
+                    seq: state.seq,
+                    target: target.to_string(),
+                    msg: msg.to_string(),
+                });
+                state.seq += 1;
+                if state.records.len() > state.capacity {
+                    state.records.remove(0);
+                }
+            }
         }
     }
 
+    /// A thin handle to the installed global ring tracer. All reads/writes go
+    /// through the `Mutex`-protected static, so no `unsafe` and no aliased
+    /// `&mut` is ever manufactured — concurrent `trace_event!` calls are safe.
+    pub struct RingTrace {
+        _private: (),
+    }
+
     impl RingTrace {
-        /// Create a ring buffer retaining up to `capacity` records.
-        pub fn new(capacity: usize) -> Self {
-            RingTrace {
-                records: Vec::new(),
-                capacity: capacity.max(1),
-                seq: 0,
+        /// Install a ring collector with the given `capacity` as the global
+        /// tracer. Returns a handle whose methods read/write the shared state
+        /// under a mutex.
+        pub fn install(capacity: usize) -> &'static RingTrace {
+            {
+                let mut guard = RING.lock().expect("ring mutex poisoned");
+                *guard = Some(RingState {
+                    records: Vec::new(),
+                    capacity: capacity.max(1),
+                    seq: 0,
+                });
             }
-        }
-
-        /// Install this collector as the global tracer, leaking it for the
-        /// lifetime of the program. Returns the leaked handle.
-        pub fn install(self) -> &'static mut RingTrace {
-            let leaked: &'static mut RingTrace = Box::leak(Box::new(self));
-            RING.store(leaked as *mut RingTrace as usize, Ordering::Relaxed);
             set_tracer(ring_tracer);
-            leaked
+            // Leak a marker handle for the static lifetime.
+            Box::leak(Box::new(RingTrace { _private: () }))
         }
 
-        /// Snapshot of captured records.
-        pub fn records(&self) -> &[Record] {
-            &self.records
+        /// Snapshot of captured records (owned: a borrow can't outlive the
+        /// dropped mutex guard).
+        pub fn records(&self) -> Vec<Record> {
+            RING.lock()
+                .map(|g| g.as_ref().map(|s| s.records.clone()).unwrap_or_default())
+                .unwrap_or_default()
         }
 
         /// Number of captured records.
         pub fn len(&self) -> usize {
-            self.records.len()
+            RING.lock()
+                .map(|g| g.as_ref().map(|s| s.records.len()).unwrap_or(0))
+                .unwrap_or(0)
         }
 
         /// Whether no records have been captured.
         pub fn is_empty(&self) -> bool {
-            self.records.is_empty()
+            self.len() == 0
         }
 
         /// Remove all captured records.
-        pub fn clear(&mut self) {
-            self.records.clear();
-            self.seq = 0;
+        pub fn clear(&self) {
+            if let Ok(mut guard) = RING.lock() {
+                if let Some(state) = guard.as_mut() {
+                    state.records.clear();
+                    state.seq = 0;
+                }
+            }
         }
     }
 
     /// Uninstall the ring tracer, restoring the no-tracer state.
     pub fn uninstall() {
-        RING.store(0, Ordering::Relaxed);
+        if let Ok(mut guard) = RING.lock() {
+            *guard = None;
+        }
         set_tracer(nop_tracer);
     }
 
@@ -237,13 +253,12 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn ring_collects_events() {
-        let ring = RingTrace::new(8);
-        let ring = ring.install();
+        let ring = RingTrace::install(8);
         trace_event!("test", "value = {}", 42);
         trace_value!("test", [1, 2, 3]);
         assert_eq!(ring.len(), 2);
         assert_eq!(ring.records()[0].msg, "value = 42");
         uninstall();
-        assert!(RingTrace::new(1).records().is_empty());
+        assert!(RingTrace::install(1).records().is_empty());
     }
 }
