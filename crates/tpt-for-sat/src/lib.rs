@@ -520,8 +520,15 @@ impl Solver {
     }
 
     /// The satisfying Boolean value of a variable.
+    ///
+    /// Returns `None` for a `v` outside `0..var_count()`, matching the
+    /// crate-wide "never panic on caller-supplied indices" discipline.
     pub fn value(&self, v: Var) -> Option<bool> {
-        match self.assigns[v as usize] {
+        let idx = v as usize;
+        if idx >= self.n_vars {
+            return None;
+        }
+        match self.assigns[idx] {
             0 => None,
             1 => Some(true),
             -1 => Some(false),
@@ -647,6 +654,15 @@ mod tests {
         .unwrap();
         let mut s = Solver::new(cnf);
         assert_eq!(s.solve(), SatResult::Unsat);
+    }
+
+    #[test]
+    fn value_rejects_out_of_range_var() {
+        let cnf = Cnf::from_lits(2, &[&[1, 2]]).unwrap();
+        let mut s = Solver::new(cnf);
+        s.solve();
+        assert_eq!(s.value(2), None);
+        assert_eq!(s.value(1_000_000), None);
     }
 
     #[test]

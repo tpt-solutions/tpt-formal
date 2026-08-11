@@ -289,6 +289,29 @@ panic-as-DoS entry points. Tracked here per-fix; see
 - [x] Add a `cargo audit` (RustSec) job to `.github/workflows/ci.yml` alongside the
       existing `cargo-deny` job
 
+## Phase 11 — Follow-Up Review (2026-08-12)
+
+Re-verified every Phase 10 fix against the actual source (not just the checklist):
+`propagate`/`analyze`'s position-0 invariant, the abstract-interp pull-mechanism
+removal + `VarId` bounds checks, `runtime-verify`'s `Globally` → `Inconclusive`,
+`vcgen`'s `wp(Assume, _) = c ⟹ q`, `symbolic-exec`'s `If`-continuation/nested-div/
+`Option<Term>` fixes, `trace-macros`' `Mutex`-backed `RingTrace`, `smt-lite`'s
+checked arithmetic, and the SAT→SMT Tseitin wiring — all confirmed correctly
+implemented, not just marked done. `cargo test --workspace`, `clippy -D warnings`,
+`fmt --check`, and `cargo deny check` all still pass. No literal stubs
+(`todo!()`/`unimplemented!()`) or `TODO`/`FIXME` comments exist anywhere in the
+workspace.
+
+- [x] `tpt-for-sat`: `Solver::value()` indexed `self.assigns[v as usize]` with an
+      unchecked caller-supplied `Var`, panicking on out-of-range input — the one
+      public entry point in the crate that didn't follow its own "never panic on
+      malformed input" discipline. Bounds-check and return `None`; added
+      `value_rejects_out_of_range_var` regression test.
+- [ ] Phase 0 / Phase 7 `tpt-rust-map/registry.toml` pre-checks remain blocked:
+      the sibling `tpt-rust-map` repo is not present in this environment. Not
+      fixable from within this repo — revisit once that repo is available or
+      this repo is pushed to a remote.
+
 ## Phase 9 — Release & Publish
 
 do not publish unless explicitly asked for
