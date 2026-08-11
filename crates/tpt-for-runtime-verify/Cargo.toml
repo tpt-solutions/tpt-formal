@@ -1,0 +1,17 @@
+[package]
+name = "tpt-for-runtime-verify"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Runtime verification / temporal-logic monitoring."
+
+readme = "README.md"
+keywords = ["runtime-verification", "temporal-logic", "monitoring", "verification", "observers"]
+categories = ["science", "development-tools::debugging", "rust-patterns"]
+
+[dependencies]
+
+[lints]
+workspace = true

@@ -7,6 +7,10 @@ license.workspace = true
 authors.workspace = true
 description = "Type-level safety encoding toolkit: phantom/ghost/newtype/bounded/safe-cast."
 
+readme = "README.md"
+keywords = ["typestate", "type-level", "phantom-type", "newtype", "safety"]
+categories = ["rust-patterns", "no-std"]
+
 [dependencies]
 
 [features]

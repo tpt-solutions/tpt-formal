@@ -7,6 +7,10 @@ license.workspace = true
 authors.workspace = true
 description = "Lightweight SMT bridge: typed term/problem builder, SMT-LIB2 serializer, minimal evaluator."
 
+readme = "README.md"
+keywords = ["smt", "smt-lib", "solver", "formal-verification", "logic"]
+categories = ["science", "mathematics", "parsing"]
+
 [dependencies]
 
 [lints]

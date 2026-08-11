@@ -7,6 +7,10 @@ license.workspace = true
 authors.workspace = true
 description = "Deterministic, seedable property-based testing."
 
+readme = "README.md"
+keywords = ["property-testing", "testing", "deterministic", "quickcheck", "seed"]
+categories = ["development-tools::testing", "rust-patterns"]
+
 [dependencies]
 
 [lints]

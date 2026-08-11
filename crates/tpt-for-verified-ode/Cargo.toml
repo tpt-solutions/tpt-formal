@@ -7,6 +7,10 @@ license.workspace = true
 authors.workspace = true
 description = "Verified ODE solving: contract-guarded fixed-step integrators."
 
+readme = "README.md"
+keywords = ["ode", "numerical", "simulation", "verification", "integrator"]
+categories = ["science", "mathematics", "algorithms"]
+
 [dependencies]
 tpt-for-contract = { workspace = true }
 

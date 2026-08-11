@@ -7,6 +7,10 @@ license.workspace = true
 authors.workspace = true
 description = "Trace / instrumentation macros for verification (no_std global tracer)."
 
+readme = "README.md"
+keywords = ["tracing", "instrumentation", "macros", "verification", "logging"]
+categories = ["development-tools::debugging", "rust-patterns", "no-std"]
+
 [dependencies]
 
 [features]

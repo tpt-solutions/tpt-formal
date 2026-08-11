@@ -7,6 +7,10 @@ license.workspace = true
 authors.workspace = true
 description = "Witness types: values carrying compile-time proof that a predicate holds."
 
+readme = "README.md"
+keywords = ["witness", "proof", "phantom-type", "type-level", "dependent-types"]
+categories = ["rust-patterns", "no-std"]
+
 [dependencies]
 tpt-for-typestate = { workspace = true }
 

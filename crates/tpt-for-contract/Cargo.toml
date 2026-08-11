@@ -7,6 +7,10 @@ license.workspace = true
 authors.workspace = true
 description = "Design-by-contract: preconditions, postconditions, invariants, loop invariants."
 
+readme = "README.md"
+keywords = ["contract", "design-by-contract", "precondition", "postcondition", "invariant"]
+categories = ["rust-patterns", "no-std"]
+
 [dependencies]
 
 [features]

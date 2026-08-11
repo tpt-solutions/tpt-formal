@@ -1,0 +1,17 @@
+[package]
+name = "tpt-for-sat"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "From-scratch pure-Rust CDCL SAT solver (no FFI): CNF, watched literals, 1UIP clause learning, restarts."
+
+readme = "README.md"
+keywords = ["sat", "solver", "cdcl", "cnf", "boolean-satisfiability"]
+categories = ["algorithms", "science", "mathematics"]
+
+[dependencies]
+
+[lints]
+workspace = true

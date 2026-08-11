@@ -7,6 +7,10 @@ license.workspace = true
 authors.workspace = true
 description = "Compile-time assertions (const_assert / const_assert_eq / type-level checks)."
 
+readme = "README.md"
+keywords = ["const", "assert", "compile-time", "static-assert", "type-level"]
+categories = ["rust-patterns", "no-std"]
+
 [dependencies]
 
 [features]

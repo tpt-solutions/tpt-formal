@@ -7,6 +7,10 @@ license.workspace = true
 authors.workspace = true
 description = "Proof AST: representation of terms, formulas, and proof trees."
 
+readme = "README.md"
+keywords = ["ast", "proof", "logic", "formal-verification", "term"]
+categories = ["science", "mathematics", "data-structures"]
+
 [dependencies]
 
 [lints]

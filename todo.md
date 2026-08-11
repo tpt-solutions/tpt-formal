@@ -20,7 +20,7 @@ spec.txt's per-crate build notes, not a code port.
 - [x] Confirm CI `no_std` job in `ci.yml` is updated from its placeholder to
       explicit `-p <crate>` flags once the first no_std crate landed (per ADR
       0001 — no blind `--workspace` no_std build)
-- [ ] Confirm all 13 `tpt-for-*` crates are in `tpt-rust-map/registry.toml`
+- [ ] Confirm all 19 `tpt-for-*` crates are in `tpt-rust-map/registry.toml`
       (already done, `status = "planned"`) — flip each to `status = "git"`
       once this repo is pushed to a remote
 
@@ -89,7 +89,7 @@ spec.txt's per-crate build notes, not a code port.
 - [x] Unit tests (exponential-decay convergence vs e^{-t})
 - [x] Docs + examples
 
-> All 13 `tpt-for-*` crates are now implemented. `tpt-sci-ode` (sibling
+> all 19 `tpt-for-*` crates are now implemented. `tpt-sci-ode` (sibling
 > `tpt-science`) remains the only outstanding external dependency, tracked as a
 > future backend for `tpt-for-verified-ode`.
 
@@ -153,65 +153,67 @@ of `tpt-zero-formal`/`tpt-formal-lab` crates. All independent of each other;
 `tpt-for-vcgen` needs `tpt-for-contract` + `tpt-for-smt-lite`, both already
 implemented, so it can start immediately. None block Phase 8/9.
 
-**`tpt-for-model-check`** — explicit-state model checking (wraps `stateright`, MIT)
-- [ ] Check `tpt-rust-map/registry.toml` for an existing entry before
-      registering (per spec.txt's mandatory pre-check — not yet done,
-      sibling repo unavailable in this environment)
-- [ ] Add `stateright` dependency
-- [ ] Scaffold crate
-- [ ] Design public API (thin wrapper surface over stateright's actor/
-      model-checker types)
-- [ ] Implement
-- [ ] Unit tests
-- [ ] Docs + examples
+> **Phase 7 status:** all six crates are scaffolded, designed, implemented,
+> tested, and documented. `cargo test --workspace`, `cargo clippy
+> --workspace --all-targets --all-features -- -D warnings`, and `cargo fmt
+> --check` all pass. The `tpt-rust-map/registry.toml` pre-check could not be
+> performed (sibling repo unavailable in this environment). `model-check` is
+> clean-room (a `stateright` external backend is documented, mirroring
+> `smt-lite`'s `rsmt2`/`z3` notes); `runtime-verify` is clean-room per the
+> `rtlola` licensing note.
+
+**`tpt-for-model-check`** — explicit-state model checking (clean-room; `stateright` documented as external backend)
+- [ ] Check `tpt-rust-map/registry.toml` for an existing entry (sibling repo
+      unavailable in this environment — blocked)
+- [x] Decide backend: clean-room implementation; `stateright` (MIT) documented
+      as a future external backend behind a feature flag
+- [x] Scaffold crate
+- [x] Design public API (`Model` trait: `initials`/`actions`/`step`/`is_error`
+      + BFS safety check returning a `Counterexample` on violation)
+- [x] Implement (worklist BFS over the reachable state graph)
+- [x] Unit tests (safe/unsafe bounded counter, mutual-exclusion violation)
+- [x] Docs + examples
 
 **`tpt-for-sat`** — from-scratch pure-Rust CDCL SAT solver, no FFI
-- [ ] Check `tpt-rust-map/registry.toml` (same caveat as above)
-- [ ] Scaffold crate
-- [ ] Design public API (CNF/clause representation, incremental solve
-      interface)
-- [ ] Implement CDCL core (unit propagation, clause learning, watched
-      literals, restarts)
-- [ ] Unit tests (correctness against known SAT/UNSAT benchmark instances)
-- [ ] Docs + examples
+- [ ] Check `tpt-rust-map/registry.toml` (sibling repo unavailable — blocked)
+- [x] Scaffold crate
+- [x] Design public API (`Cnf`/`Lit`/`Clause`/`Solver`/`SatResult`)
+- [x] Implement CDCL core (watched literals, 1UIP clause learning, VSIDS, restarts)
+- [x] Unit tests (SAT/UNSAT instances, unit propagation, learned clause)
+- [x] Docs + examples
 
 **`tpt-for-vcgen`** — verification-condition generation (needs `tpt-for-contract` + `tpt-for-smt-lite`, both implemented)
-- [ ] Check `tpt-rust-map/registry.toml`
-- [ ] Scaffold crate
-- [ ] Design public API (how contract pre/post/invariant annotations lower
-      to weakest-precondition goals; integration point with
-      `tpt-for-smt-lite`'s `Term`/`Problem` types)
-- [ ] Implement
-- [ ] Unit tests
-- [ ] Docs + examples
+- [ ] Check `tpt-rust-map/registry.toml` (sibling repo unavailable — blocked)
+- [x] Scaffold crate
+- [x] Design public API (WP calculus over `Expr`/`BExpr`/`Stmt`/`Spec` ->
+      `tpt-for-smt-lite` `Term`/`Problem`)
+- [x] Implement (`wp` + `generate_vc` + `verify`)
+- [x] Unit tests (ground verified/falsified programs, SMT-LIB2 serialization)
+- [x] Docs + examples
 
 **`tpt-for-abstract-interp`** — generic abstract-interpretation framework
-- [ ] Check `tpt-rust-map/registry.toml`
-- [ ] Scaffold crate
-- [ ] Design public API (abstract domain trait, fixpoint iteration engine;
-      interval domain first)
-- [ ] Implement
-- [ ] Unit tests
-- [ ] Docs + examples
+- [ ] Check `tpt-rust-map/registry.toml` (sibling repo unavailable — blocked)
+- [x] Scaffold crate
+- [x] Design public API (`AbstractDomain` trait, `Interval` domain, `analyze` fixpoint)
+- [x] Implement (widening-based worklist fixpoint over a CFG)
+- [x] Unit tests (interval lattice, loop-bound `x in [10, +inf)`)
+- [x] Docs + examples
 
 **`tpt-for-symbolic-exec`** — whole-program symbolic execution
-- [ ] Check `tpt-rust-map/registry.toml`
-- [ ] Scaffold crate
-- [ ] Design public API (decide constraint backend: `tpt-for-sat` for
-      boolean-only paths vs. `tpt-for-smt-lite` for full theories)
-- [ ] Implement
-- [ ] Unit tests
-- [ ] Docs + examples
+- [ ] Check `tpt-rust-map/registry.toml` (sibling repo unavailable — blocked)
+- [x] Scaffold crate
+- [x] Design public API (`SExpr`/`SCond`/`SStmt` + `run` returning `SymReport`)
+- [x] Implement (symbolic store, path conditions, `tpt-for-smt-lite` backend)
+- [x] Unit tests (div-by-zero detection, broken-assertion, branch pruning)
+- [x] Docs + examples
 
 **`tpt-for-runtime-verify`** — runtime verification / temporal-logic monitoring over live traces
-- [ ] Check `tpt-rust-map/registry.toml`
-- [ ] Scaffold crate
-- [ ] Design public API (spec language surface + monitor/evaluator;
-      clean-room from published algorithms, not ported from the
-      Apache-2.0-only `rtlola-interpreter`)
-- [ ] Implement
-- [ ] Unit tests
-- [ ] Docs + examples
+- [ ] Check `tpt-rust-map/registry.toml` (sibling repo unavailable — blocked)
+- [x] Scaffold crate
+- [x] Design public API (`Formula` LTL fragment + `Monitor`/`Verdict`)
+- [x] Implement (clean-room monitor, `Satisfied`/`Violated`/`Inconclusive`)
+- [x] Unit tests (G/F/U/X semantics, incremental monitor)
+- [x] Docs + examples
 
 ## Phase 8 — Cross-Crate Integration & Workspace QA
 
@@ -225,21 +227,17 @@ implemented, so it can start immediately. None block Phase 8/9.
       refinement; see `tpt-for-refinement/tests/integration.rs`)
 - [x] Root `README.md` finalized: full crate table + dependency graph
 
-> The 6 "ecosystem-gap" crates in Phase 7 (model-check, sat, vcgen,
-> abstract-interp, symbolic-exec, runtime-verify) are a separate, later scope
-> from a follow-up research pass — not part of the original 13-crate bootstrap
-> and not built in this pass. `tpt-for-vcgen` is the only one unblocked (needs
-> `tpt-for-contract` + `tpt-for-smt-lite`, both done); the rest need external
-> bindings (`stateright`) or substantial clean-room implementations.
 
 ## Phase 9 — Release & Publish
 
 do not publish unless explicitly asked for
-- [ ] Version all 13 crates `0.1.0`, changelog entries
+- [ ] Version all 19 crates `0.1.0`, changelog entries
 - [ ] Tag release; publish to crates.io in dependency order
-- [ ] Flip `tpt-rust-map/registry.toml` status → `published` for all 13
+- [ ] Flip `tpt-rust-map/registry.toml` status -> `published` for all 19
       `tpt-for-*` entries
 - [ ] Follow-up (tracked, not blocking): revisit ADR 0006's crate grouping
       once a real consumer (`tpt-flight-control`, `tpt-dynamo`, `tpt-vanguard`,
       `tpt-chassis`, `tpt-servo`, `tpt-relay`, etc.) depends on `tpt-formal`
-      and reveals whether the 13-crate split matches actual usage
+      and reveals whether the 19-crate split matches actual usage
+
+

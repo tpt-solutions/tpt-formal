@@ -20,6 +20,13 @@ members = [
     "crates/tpt-for-redundancy",
     "crates/tpt-for-trace-macros",
     "crates/tpt-for-verified-ode",
+    # Phase 7 — Ecosystem-gap crates
+    "crates/tpt-for-model-check",
+    "crates/tpt-for-sat",
+    "crates/tpt-for-vcgen",
+    "crates/tpt-for-abstract-interp",
+    "crates/tpt-for-symbolic-exec",
+    "crates/tpt-for-runtime-verify",
 ]
 exclude = []
 
@@ -46,6 +53,12 @@ tpt-for-det-proptest = { version = "0.1.0", path = "crates/tpt-for-det-proptest"
 tpt-for-deterministic-sim = { version = "0.1.0", path = "crates/tpt-for-deterministic-sim" }
 tpt-for-redundancy = { version = "0.1.0", path = "crates/tpt-for-redundancy" }
 tpt-for-trace-macros = { version = "0.1.0", path = "crates/tpt-for-trace-macros" }
+tpt-for-model-check = { version = "0.1.0", path = "crates/tpt-for-model-check" }
+tpt-for-sat = { version = "0.1.0", path = "crates/tpt-for-sat" }
+tpt-for-vcgen = { version = "0.1.0", path = "crates/tpt-for-vcgen" }
+tpt-for-abstract-interp = { version = "0.1.0", path = "crates/tpt-for-abstract-interp" }
+tpt-for-symbolic-exec = { version = "0.1.0", path = "crates/tpt-for-symbolic-exec" }
+tpt-for-runtime-verify = { version = "0.1.0", path = "crates/tpt-for-runtime-verify" }
 
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "warn"

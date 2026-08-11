@@ -35,15 +35,27 @@ primitives into one dedicated pillar. The authoritative design notes live in
 | `tpt-for-deterministic-sim` | 6 | no | — | Deterministic simulation harness |
 | `tpt-for-redundancy` | 6 | yes | — | Redundancy/fault-tolerance primitives |
 | `tpt-for-trace-macros` | 6 | yes | — | Trace/instrumentation macros |
+| `tpt-for-model-check` | 7 | no | — | Explicit-state model checking (clean-room; `stateright` is a documented external backend) |
+| `tpt-for-sat` | 7 | no | — | From-scratch pure-Rust CDCL SAT solver (watched literals, 1UIP, restarts) |
+| `tpt-for-vcgen` | 7 | no | tpt-for-contract, tpt-for-smt-lite | Verification-condition generation (WP calculus → SMT-LIB2) |
+| `tpt-for-abstract-interp` | 7 | no | — | Generic abstract interpretation: `AbstractDomain` trait, fixpoint engine, `Interval` domain |
+| `tpt-for-symbolic-exec` | 7 | no | tpt-for-smt-lite | Whole-program symbolic execution (div-by-zero / broken-assertion detection) |
+| `tpt-for-runtime-verify` | 7 | no | — | Runtime verification: clean-room temporal-logic monitor over live traces |
 
 ## Status
 
-Phases 0–6 are largely landed. `tpt-for-contract`, `tpt-for-witness`,
-`tpt-for-refinement`, `tpt-for-verified-algorithms`, and `tpt-for-smt-lite` are
-implemented and tested; the `no_std` crates build for `thumbv6m-none-eabi`.
-`tpt-for-verified-ode` remains **deferred** — it needs the cross-repo
-`tpt-sci-ode` (sibling `tpt-science` repo), which is not built yet. See
-[`todo.md`](todo.md) for the per-phase tracker.
+All phases (0–7) are landed. The 13 original crates plus the six Phase 7
+ecosystem-gap crates are implemented, documented, and tested. The `no_std`
+crates build for `thumbv6m-none-eabi`. `tpt-for-verified-ode` remains
+**deferred** for its high-performance backend — it is designed to compose with
+the cross-repo `tpt-sci-ode` (sibling `tpt-science` repo), which is not built
+yet. See [`todo.md`](todo.md) for the per-phase tracker.
+
+> **Phase 7 registry pre-check:** the `tpt-rust-map/registry.toml` pre-check
+> recommended by `spec.txt` could not be performed in this environment (the
+> sibling `tpt-rust-map` repo is unavailable). The six crates were built
+> clean-room per the repo's existing conventions; flip their registry entries
+> to `status = "git"` once this repo is pushed to a remote.
 
 ## Dependency graph
 
@@ -54,10 +66,13 @@ tpt-for-typestate ─────► tpt-for-witness
 tpt-for-contract ──────► tpt-for-refinement
 tpt-for-contract ──────► tpt-for-verified-algorithms
 tpt-for-contract ──────► tpt-for-verified-ode
+tpt-for-contract ─────► tpt-for-vcgen
+tpt-for-smt-lite ─────► tpt-for-vcgen
+tpt-for-smt-lite ─────► tpt-for-symbolic-exec
 tpt-for-assert-const ──► (compile-time only, no runtime deps)
 ```
 
-`verified-ode` is designed to compose with the cross-repo `tpt-sci-ode`
+`tpt-for-verified-ode` is designed to compose with the cross-repo `tpt-sci-ode`
 (sibling `tpt-science` repo) as a higher-order backend behind the same
 [`OdeSystem`](crates/tpt-for-verified-ode/src/lib.rs) contract surface.
 

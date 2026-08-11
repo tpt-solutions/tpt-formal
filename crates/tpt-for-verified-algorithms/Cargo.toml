@@ -7,6 +7,10 @@ license.workspace = true
 authors.workspace = true
 description = "Verified algorithm implementations guarded by design-by-contract checks."
 
+readme = "README.md"
+keywords = ["algorithms", "verification", "contract", "formal-verification", "correctness"]
+categories = ["algorithms", "rust-patterns"]
+
 [dependencies]
 tpt-for-contract = { workspace = true }
 

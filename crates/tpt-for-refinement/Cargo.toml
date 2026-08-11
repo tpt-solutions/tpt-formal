@@ -7,6 +7,10 @@ license.workspace = true
 authors.workspace = true
 description = "Refinement types: values carrying a compile-time refinement predicate."
 
+readme = "README.md"
+keywords = ["refinement-types", "contract", "dependent-types", "type-level", "predicate"]
+categories = ["rust-patterns", "no-std"]
+
 [dependencies]
 tpt-for-contract = { workspace = true }
 

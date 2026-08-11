@@ -7,6 +7,10 @@ license.workspace = true
 authors.workspace = true
 description = "Deterministic, seedable simulation harness."
 
+readme = "README.md"
+keywords = ["simulation", "deterministic", "testing", "reproducible", "seed"]
+categories = ["development-tools::testing", "rust-patterns"]
+
 [dependencies]
 
 [lints]
