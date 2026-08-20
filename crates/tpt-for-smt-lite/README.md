@@ -10,34 +10,49 @@ binary.
 
 ## Features
 
-- `Term` / `Sort` / `Value` — a typed expression language (Bool, Int, BitVec)
-  with a fluent builder API and `core::ops` overloads.
-- `Problem` — declare constants and assert terms; `to_smtlib2()` serializes a
-  complete SMT-LIB 2 script.
-- `check_sat()` — a built-in ground evaluator returning `Sat` / `Unsat` /
-  `Unknown` (free variables → `Unknown`).
-- `get_model()` — extract a (possibly partial) model.
+- `Sort` — `Bool`, `Int`, `BitVec(width)`, with `to_smtlib2()` rendering.
+- `Value` — `Bool(bool)` / `Int(i64)`, the result of evaluation.
+- `Term` — a typed expression language with constructors `bool` / `int` / `var`
+  and the nodes `Not`, `And`, `Or`, `Implies`, `Eq`, `Neg`, `Add`, `Sub`,
+  `Mul`, `Lt`, `Le`, `Gt`, `Ge`, `Ite`. Fluent builders (`and`, `or`, `implies`,
+  `ite`, `equals`, `lt`, `le`, `gt`, `ge`), `core::ops` overloads (`!`, `-`,
+  `+`, `-`, `*`), `to_smtlib2()`, and `eval(&model)`.
+- `Problem` — `new`, `declare_const`, `assert`, accessors `declarations` /
+  `assertions`, `check_sat`, `get_model`, and `to_smtlib2()` (full script).
+- `check_sat()` — built-in ground evaluator returning `Sat` / `Unsat` /
+  `Unknown` (free variables → `Unknown`, upgraded to `Unsat` when the
+  boolean-abstraction tier proves a contradiction).
 
 ## Example
 
+Verify the postcondition of `f(a) = a + 1`, namely `f(a) > a` for every integer
+`a`, by checking the negation `a + 1 <= a`. The ground instance `1 <= 0` is
+decided locally as `Unsat` (the property holds); the free-variable instance
+`a + 1 <= a` is reported `Unknown` and serialized for an external solver. A
+satisfiable ground formula, direct `eval` against a model, and SMT-LIB 2
+serialization are also demonstrated.
+
 ```rust
-use tpt_for_smt_lite::{Problem, Sort, Term, SatResult};
+use tpt_for_smt_lite::{Problem, SatResult, Sort, Term};
 
+// Ground negation `1 <= 0` → Unsat ⇒ `a + 1 > a` holds for all `a`.
 let mut p = Problem::new();
-p.declare_const("x", Sort::Int);
-p.assert(Term::var("x").le(Term::int(10)));
+p.assert(Term::int(1).le(Term::int(0)));
+assert_eq!(p.check_sat(), SatResult::Unsat);
 
-// The built-in evaluator cannot decide a formula with free variables…
+// Free-variable negation `a + 1 <= a` → Unknown (hand to an external solver).
+let mut p = Problem::new();
+p.declare_const("a", Sort::Int);
+p.assert((Term::var("a") + Term::int(1)).le(Term::var("a")));
 assert_eq!(p.check_sat(), SatResult::Unknown);
 
-// …but it decides fully ground formulas:
-let mut q = Problem::new();
-q.assert(Term::int(1).equals(Term::int(2)));
-assert_eq!(q.check_sat(), SatResult::Unsat);
-
-// Serialize for an external solver:
-println!("{}", p.to_smtlib2());
+// Satisfiable ground formula and direct evaluation against a model.
+let mut p = Problem::new();
+p.assert(Term::int(3).gt(Term::int(1)).and((Term::int(2) + Term::int(3)).equals(Term::int(5))));
+assert_eq!(p.check_sat(), SatResult::Sat);
 ```
+
+Run it with `cargo run --example smt_lite_basic -p tpt-for-smt-lite`.
 
 ## Cargo features
 

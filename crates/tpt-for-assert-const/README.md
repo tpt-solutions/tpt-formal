@@ -1,6 +1,6 @@
 # tpt-for-assert-const
 
-Compile-time assertions (const_assert / const_assert_eq / type-level checks).
+Compile-time assertions (`const_assert` / `const_assert_eq` / type-level checks).
 
 Catch invariant violations *while compiling* instead of at runtime. Everything is
 `no_std`.
@@ -10,20 +10,40 @@ Catch invariant violations *while compiling* instead of at runtime. Everything i
 - `const_assert!(cond)` — fail the build if `cond` is false at compile time.
 - `const_assert_eq!(a, b)` / `const_assert_ne!(a, b)` — compile-time equality
   and inequality checks.
-- `Const<bool>`, `IsTrue` and `Same` — type-level machinery that lets a trait
-  bound *require* a boolean to be `true` or two types to be equal.
+- `Const<bool>` — a compile-time boolean carried at the type level.
+- `IsTrue` — a trait implemented only for `Const<true>`, so a bound
+  `Const<B>: IsTrue` forces `B` to be `true` at compile time.
+- `Same` — a trait with `Output = Self` for every `T`, so a bound
+  `T: Same<Output = U>` requires `T` and `U` to be the same type.
 
 ## Example
 
 ```rust
-tpt_for_assert_const::const_assert!(2 + 2 == 4);
-tpt_for_assert_const::const_assert!(core::mem::size_of::<u32>() == 4);
-tpt_for_assert_const::const_assert_eq!(1u8 + 1, 2u8);
+use tpt_for_assert_const::{const_assert, const_assert_eq, const_assert_ne, Const, IsTrue, Same};
 
-// A trait bound that forces B to be true at compile time:
-fn requires_true<B: tpt_for_assert_const::IsTrue>() {}
-requires_true::<tpt_for_assert_const::Const<true>>();
+// A ring buffer whose masking index math needs a power-of-two capacity:
+const CAPACITY: usize = 64;
+const_assert!(CAPACITY.is_power_of_two());
+const_assert_eq!(CAPACITY & (CAPACITY - 1), 0);
+
+// A wire-format header whose exact byte size must never change by accident:
+#[repr(C)]
+struct Header { version: u8, flags: u8, length: u16, tag: u32 }
+const_assert_eq!(core::mem::size_of::<Header>(), 8);
+const_assert_ne!(1u8, 2u8);
+
+// `IsTrue` forces a compile-time boolean; `Same` forces two types to be equal:
+fn requires_tiny_index<B: IsTrue>() {}
+requires_tiny_index::<Const<true>>();
+fn identity_only<T, U>()
+where
+    T: Same<Output = U>,
+{
+}
+identity_only::<u32, u32>();
 ```
+
+Run it with `cargo run --example assert_const_basic -p tpt-for-assert-const`.
 
 ## Cargo features
 

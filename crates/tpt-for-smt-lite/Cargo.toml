@@ -19,5 +19,5 @@ workspace = true
 
 [[example]]
 name = "smt_lite_basic"
-path = "examples/basic.rs"
+path = "examples/postcondition_proof.rs"
 

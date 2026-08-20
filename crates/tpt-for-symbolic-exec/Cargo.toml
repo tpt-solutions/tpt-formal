@@ -19,5 +19,5 @@ workspace = true
 
 [[example]]
 name = "symbolic_exec_basic"
-path = "examples/basic.rs"
+path = "examples/div_by_zero_paths.rs"
 

@@ -19,5 +19,5 @@ workspace = true
 
 [[example]]
 name = "verified_algorithms_basic"
-path = "examples/basic.rs"
+path = "examples/algorithms_demo.rs"
 

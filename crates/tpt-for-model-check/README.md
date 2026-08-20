@@ -21,28 +21,40 @@ checking useful in practice.
 ## Example
 
 ```rust
-use tpt_for_model_check::{Model, check_safety, SafetyResult};
+use tpt_for_model_check::{check_safety, reachable, Model, SafetyResult};
 
-// A bounded counter that must stay below 3.
+// A counter bounded by `cap`; `max` is the (forbidden) error threshold.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-struct Counter(u32);
+struct Counter { cap: u32, max: u32 }
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-enum Act { Inc }
+struct Count(u32);
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+enum CountAct { Inc }
 
 impl Model for Counter {
-    type State = Counter;
-    type Action = Act;
-    fn initials(&self) -> Vec<Counter> { vec![Counter(0)] }
-    fn actions(&self, s: &Counter) -> Vec<Act> {
-        if s.0 < 2 { vec![Act::Inc] } else { vec![] }
+    type State = Count;
+    type Action = CountAct;
+    fn initials(&self) -> Vec<Count> { vec![Count(0)] }
+    fn actions(&self, s: &Count) -> Vec<CountAct> {
+        if s.0 < self.cap { vec![CountAct::Inc] } else { vec![] }
     }
-    fn step(&self, s: &Counter, _: &Act) -> Counter { Counter(s.0 + 1) }
-    fn is_error(&self, s: &Counter) -> bool { s.0 >= 3 }
+    fn step(&self, s: &Count, _: &CountAct) -> Count { Count(s.0 + 1) }
+    fn is_error(&self, s: &Count) -> bool { s.0 >= self.max }
 }
 
-let r = check_safety(&Counter(0));
-assert!(matches!(r, SafetyResult::Safe));
+// Safe: cap=2 means the counter can only reach {0,1,2}; `max` (>=3) is unreachable.
+let safe = Counter { cap: 2, max: 3 };
+assert!(matches!(check_safety(&safe), SafetyResult::Safe));
+println!("reachable states: {}", reachable(&safe).len());
+
+// Unsafe: from 2 we can `Inc` to 3, which is the error state → counterexample.
+let bad = Counter { cap: 3, max: 3 };
+if let SafetyResult::Violated(ce) = check_safety(&bad) {
+    println!("counterexample length: {}", ce.steps.len());
+}
 ```
+
+Run it with `cargo run --example model_check_basic -p tpt-for-model-check`.
 
 ## Cargo features
 

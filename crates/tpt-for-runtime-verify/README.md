@@ -26,7 +26,7 @@ that, given a stream of events, reports a `Verdict`:
 ```rust
 use tpt_for_runtime_verify::{Formula, Monitor, Step, Verdict};
 
-// Globally, every `req` is eventually followed by an `ack`:  G (req → F ack)
+// Every `req` is eventually followed by an `ack`:  G (req → F ack)
 let spec = Formula::globally(Formula::implies(
     Formula::atom("req"),
     Formula::eventually(Formula::atom("ack")),
@@ -34,9 +34,16 @@ let spec = Formula::globally(Formula::implies(
 let mut mon = Monitor::new(spec);
 
 mon.observe(&Step::from_names(["req"]));
-assert_eq!(mon.verdict(), Verdict::Inconclusive); // ack not seen yet
+// `ack` not seen yet: the safety property can only be *refuted* by a finite
+// prefix, never *confirmed*, so the verdict is Inconclusive.
+assert_eq!(mon.verdict(), Verdict::Inconclusive);
 mon.observe(&Step::from_names(["ack"]));
-assert_eq!(mon.verdict(), Verdict::Satisfied);
+assert_eq!(mon.verdict(), Verdict::Inconclusive);
+
+// A property that CAN be satisfied: `F ack` once `ack` appears.
+let mut m = Monitor::new(Formula::eventually(Formula::atom("ack")));
+m.observe(&Step::from_names(["ack"]));
+assert_eq!(m.verdict(), Verdict::Satisfied);
 ```
 
 ## Cargo features

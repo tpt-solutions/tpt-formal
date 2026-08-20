@@ -23,32 +23,49 @@ It is `no_std`, core-only, and zero-dependency.
 
 ## Example
 
+Encode a file's lifecycle as a typestate (`Closed` → `Open`): `open` consumes a
+`Token<Closed>` and returns a `Token<Open>`, and `read` requires that token, so
+the invalid ordering is unrepresentable. Runtime/checked range checks
+(`Bounded`/`Checked`), a transparent `Newtype`, safe numeric casts, and
+variance-controlled phantom markers round out the toolkit.
+
 ```rust
-use tpt_for_typestate::bounded::{Bounded, Checked, Bound};
-use tpt_for_typestate::safe_cast::safe_cast;
+use tpt_for_typestate::bounded::{Bound, Bounded, Checked};
+use tpt_for_typestate::ghost::{State, Stateful, Token};
+use tpt_for_typestate::newtype::Newtype;
+use tpt_for_typestate::safe_cast::{SafeCast, TrySafeCast};
 
-// Transparent newtype with From/Into glue.
-tpt_for_typestate::define_newtype!(Meters, u64);
-let m = Meters::from_inner(3);
-assert_eq!(u64::from(m), 3);
+#[derive(Clone, Copy)]
+struct Closed;
+#[derive(Clone, Copy)]
+struct Open;
+impl State for Closed {}
+impl State for Open {}
 
-// Runtime range-checked value that rejects out-of-range input.
+fn open(_t: Token<Closed>) -> Token<Open> { Token::new() }
+fn read(_t: Token<Open>) -> usize { 42 }
+
+// Valid transition: open then read. (Reading while Closed is a compile error.)
+let handle: Stateful<Closed, u32> = unsafe { Stateful::<Closed, u32>::new_unchecked(7) };
+let _ = handle.into_inner();
+let opened = open(Token::<Closed>::new());
+assert_eq!(read(opened), 42);
+
+// Runtime range check + type-level named bound.
 let b = Bounded::new(5u8, 0, 10).expect("in range");
 assert_eq!(b.saturate(20).get(), 10);
 
-// Type-level named bound.
 struct Pct;
-impl Bound for Pct {
-    type Value = u8;
-    const MIN: u8 = 0;
-    const MAX: u8 = 100;
-}
+impl Bound for Pct { type Value = u8; const MIN: u8 = 0; const MAX: u8 = 100; }
 assert!(Checked::<Pct>::new(50).is_some());
 assert!(Checked::<Pct>::new(101).is_none());
 
-// Infallible widening cast (never loses information).
+// Safe casts: widening is infallible; narrowing fails instead of truncating.
 let wide: u64 = 200u8.safe_cast();
+assert!(matches!(300u16.try_safe_cast() as Result<u8, _>, Err(_)));
 ```
+
+Run it with `cargo run --example typestate_basic -p tpt-for-typestate`.
 
 ## Cargo features
 

@@ -18,7 +18,7 @@ tpt-for-det-proptest = { path = "../tpt-for-det-proptest" }
 
 [[example]]
 name = "sat_basic"
-path = "examples/basic.rs"
+path = "examples/graph_coloring.rs"
 
 [lints]
 workspace = true

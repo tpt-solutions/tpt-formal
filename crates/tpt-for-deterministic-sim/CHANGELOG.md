@@ -9,4 +9,12 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 
 ### Added
 
-- Initial release: Deterministic, seedable simulation harness.
+- `SimRng` — a fast xorshift64* generator (`new`, `next_u64`, `gen_range`); a
+  zero seed is remapped to a non-zero state. Shared with `tpt-for-det-proptest`.
+- `World` trait — `State` / `Action` / `Event` associated types and a `step`
+  transition (`&self, &State, &Action, &mut SimRng -> (State, Event)`).
+- `Simulation<W>` — `new(world, initial, seed)`, `apply(action)`,
+  `run(actions)`; records every transition and exposes `state()` / `steps()`.
+- `StepRecord<S, A, E>` — a recorded transition carrying `action`, `state`,
+  `event`, and a zero-based `index`.
+- `core`-only (`no_std`), no external dependencies; no optional Cargo features.

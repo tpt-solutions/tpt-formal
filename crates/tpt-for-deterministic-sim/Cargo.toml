@@ -18,5 +18,5 @@ workspace = true
 
 [[example]]
 name = "deterministic_sim_basic"
-path = "examples/basic.rs"
+path = "examples/queue_simulation.rs"
 

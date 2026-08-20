@@ -10,35 +10,54 @@ tiny: build a `Cnf`, wrap it in a `Solver`, call `solve`.
 
 ## Features
 
-- `Cnf` / `Lit` / `Clause` — DIMACS-style representation with dense literal
-  indexing and a `from_lits` builder.
-- `Solver` — full CDCL engine; `solve()` returns `Sat` / `Unsat`,
-  `model()` / `value(var)` expose the satisfying assignment.
-- Watched literals, 1UIP learning, VSIDS, and restarts — all implemented
-  in-tree with zero dependencies.
+- `Lit` — a Boolean literal (`var << 1 | sign`), with `new`, `var`, `is_neg`,
+  `is_pos`, `neg`, `index`, and `from_dimacs` (DIMACS integer → literal).
+- `Clause` — a disjunction of literals, with `lits` and `is_learnt` accessors.
+- `Cnf` — a formula in conjunctive normal form, with `var_count`, `clauses`,
+  and `from_lits(vars, &[&[i32]])` (returns `None` on malformed / out-of-range input).
+- `SatResult` — `Sat` / `Unsat`.
+- `Solver` — a full CDCL engine: `new(cnf)`, `solve()` returning `SatResult`,
+  `model()` (full assignment by variable), and `value(var)` (per-variable
+  assignment, `None` for out-of-range variables).
+- Conflict-driven clause learning implemented in-tree with zero dependencies:
+  watched literals for cheap unit propagation, 1UIP conflict analysis that
+  learns a clause on every conflict, VSIDS variable-activity ordering for
+  decisions, and geometric restart scheduling.
 
 ## Example
 
+Encode "is this graph 2-colorable?" as a CNF and solve it. Each vertex `v` is a
+variable `x_v`; an edge `(u, v)` becomes `(x_u ∨ x_v) ∧ (¬x_u ∨ ¬x_v)`. A path
+(`0—1—2`) is bipartite → `Sat` (read the coloring from the model); a triangle
+(`0—1—2—0`) is an odd cycle → `Unsat`. The literal API and `from_lits`'s
+rejection of malformed input are also shown.
+
 ```rust
-use tpt_for_sat::{Cnf, Solver, SatResult};
+use tpt_for_sat::{Cnf, Lit, SatResult, Solver};
 
-// (x) ∧ (¬x ∨ y) ∧ (¬y ∨ z) ∧ (¬z)  → UNSAT
-let cnf = Cnf::from_lits(3, &[
-    &[1],
-    &[-1, 2],
-    &[-2, 3],
-    &[-3],
-]);
+// 3-vertex path 0—1—2: a valid coloring is x0=true, x1=false, x2=true.
+let mut path = vec![vec![1, 2], vec![-1, -2], vec![2, 3], vec![-2, -3]];
+let refs: Vec<&[i32]> = path.iter().collect();
+let cnf = Cnf::from_lits(3, &refs).unwrap();
 let mut solver = Solver::new(cnf);
-assert_eq!(solver.solve(), SatResult::Unsat);
+assert_eq!(solver.solve(), SatResult::Sat);
+// Adjacent vertices differ in the model.
+assert!(solver.value(0) != solver.value(1) && solver.value(1) != solver.value(2));
 
-// A satisfiable instance exposes a model:
-// (x ∨ y) ∧ (¬x ∨ y) ∧ (x ∨ ¬y)  → SAT (x = y = true)
-let cnf2 = Cnf::from_lits(2, &[&[1, 2], &[-1, 2], &[1, -2]]);
-let mut s2 = Solver::new(cnf2);
-assert_eq!(s2.solve(), SatResult::Sat);
-assert!(s2.value(0).unwrap() && s2.value(1).unwrap());
+// Triangle 0—1—2—0: odd cycle → Unsat.
+let mut tri = vec![vec![1, 2], vec![-1, -2], vec![2, 3], vec![-2, -3], vec![1, 3], vec![-1, -3]];
+let refs: Vec<&[i32]> = tri.iter().collect();
+let cnf = Cnf::from_lits(3, &refs).unwrap();
+assert_eq!(Solver::new(cnf).solve(), SatResult::Unsat);
+
+// Literal API and malformed-input rejection.
+let a_pos = Lit::from_dimacs(1);
+let a_neg = Lit::from_dimacs(-1);
+assert_eq!(a_pos.neg(), a_neg);
+assert!(Cnf::from_lits(2, &[&[0]]).is_none());
 ```
+
+Run it with `cargo run --example sat_basic -p tpt-for-sat`.
 
 ## Cargo features
 

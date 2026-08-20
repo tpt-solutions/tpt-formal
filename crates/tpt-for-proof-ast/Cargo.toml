@@ -18,5 +18,5 @@ workspace = true
 
 [[example]]
 name = "proof_ast_basic"
-path = "examples/basic.rs"
+path = "examples/even_halvable_proof.rs"
 

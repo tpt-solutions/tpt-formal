@@ -18,5 +18,5 @@ workspace = true
 
 [[example]]
 name = "runtime_verify_basic"
-path = "examples/basic.rs"
+path = "examples/request_ack_monitor.rs"
 

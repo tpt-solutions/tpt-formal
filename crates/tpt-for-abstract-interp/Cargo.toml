@@ -18,5 +18,5 @@ workspace = true
 
 [[example]]
 name = "abstract_interp_basic"
-path = "examples/basic.rs"
+path = "examples/interval_analysis.rs"
 

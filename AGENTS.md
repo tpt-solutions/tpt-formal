@@ -15,7 +15,9 @@ Rust Cargo workspace of small, mostly `no_std` formal-verification / design-by-c
 ## Layout
 
 - 21 member crates under `crates/`, each with its own `Cargo.toml`, `README.md`,
-  `src/lib.rs`, and `examples/basic.rs` (registered via `[[example]]`).
+  `src/lib.rs`, and a descriptive example under `examples/` (registered via a
+  uniquely-named `[[example]]` entry, e.g. `examples/sensor_fusion.rs` →
+  `name = "redundancy_basic"`).
 - `[workspace.package]` centralizes `license`, `edition`, `rust-version`; members
   inherit with `*.workspace = true`. Every crate is `license = "MIT OR Apache-2.0"`,
   `edition = "2021"`, `rust-version = "1.75"`.
@@ -45,8 +47,9 @@ Rust Cargo workspace of small, mostly `no_std` formal-verification / design-by-c
 
 1. Add the path to `[workspace] members`.
 2. Add it to `[workspace.dependencies]` (so dependents can use `workspace = true`).
-3. Inherit workspace `license`/`edition`/`rust-version`; add `examples/basic.rs`
-   with a `[[example]]` entry (repo norm).
+3. Inherit workspace `license`/`edition`/`rust-version`; add a descriptive
+   `examples/*.rs` with a uniquely-named `[[example]]` entry (repo norm: target
+   names are unique, e.g. `redundancy_basic`, to avoid cargo filename collisions).
 4. If `no_std`: add the `std`/`alloc` features, a `-p` line in the CI `no_std` job,
    and a README crate-table row.
 

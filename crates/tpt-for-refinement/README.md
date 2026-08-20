@@ -19,8 +19,10 @@ holds.
 ## Example
 
 ```rust
-use tpt_for_refinement::{Refined, Predicate};
+use tpt_for_contract::Invariant;
+use tpt_for_refinement::{Predicate, Refined};
 
+// A value-level predicate.
 struct Positive;
 impl Predicate<i64> for Positive {
     fn check(value: &i64) -> bool { *value > 0 }
@@ -28,7 +30,15 @@ impl Predicate<i64> for Positive {
 
 let r = Refined::<i64, Positive>::new(5).unwrap();
 assert_eq!(*r.get(), 5);
-assert!(Refined::<i64, Positive>::new(-1).is_err());
+assert!(Refined::<i64, Positive>::new(-1).is_err()); // rejected with RefineError
+
+// An `Invariant` type composes directly as a refinement predicate (blanket impl).
+struct NonEmpty { data: Vec<u8> }
+impl Invariant for NonEmpty {
+    fn check(&self) -> bool { !self.data.is_empty() }
+}
+let buf = Refined::<NonEmpty, NonEmpty>::new(NonEmpty { data: vec![1] }).unwrap();
+assert_eq!(buf.get().data.len(), 1);
 ```
 
 Any type that implements `tpt_for_contract::Invariant` can be used as `P`

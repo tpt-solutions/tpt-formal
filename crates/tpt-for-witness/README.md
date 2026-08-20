@@ -23,23 +23,35 @@ re-checking. Built on `tpt-for-typestate` for variance-correct phantom storage.
 ## Example
 
 ```rust
-use tpt_for_witness::{Witness, Positive, NonEmpty, And};
+use tpt_for_witness::{And, NonEmpty, NonNegative, NonZero, Positive, Witness};
 
-// A value known to be strictly positive.
-let w = Witness::<Positive, i32>::try_new(5).unwrap();
-assert_eq!(*w.as_ref(), 5);
-assert!(Witness::<Positive, i32>::try_new(-1).is_err());
+// A value known to be strictly positive (rejected if not).
+let w = Witness::<Positive, i64>::try_new(42).unwrap();
+assert_eq!(w.into_inner(), 42);
+assert!(Witness::<Positive, i64>::try_new(-3).is_err());
 
 // A non-empty slice, verified at construction.
 let data = [1u8, 2, 3];
 let w = Witness::<NonEmpty, _>::try_new(&data[..]).unwrap();
 assert_eq!(w.as_ref().len(), 3);
+let empty: &[u8] = &[];
+assert!(Witness::<NonEmpty, _>::try_new(empty).is_err());
 
-// Compose predicates: non-negative AND non-zero.
-type NonNegNonZero = And<tpt_for_witness::NonNegative, tpt_for_witness::NonZero>;
+// Compose predicates: non-negative AND non-zero; inspect which side failed.
+type NonNegNonZero = And<NonNegative, NonZero>;
 assert!(Witness::<NonNegNonZero, i32>::try_new(5).is_ok());
-assert!(Witness::<NonNegNonZero, i32>::try_new(0).is_err());
+let err = Witness::<NonNegNonZero, i32>::try_new(0).unwrap_err();
+assert!(err.q.is_some()); // 0 is not NonZero
+
+// map preserves the predicate: doubling a positive stays positive.
+let w = Witness::<Positive, i64>::try_new(5).unwrap();
+let w2 = unsafe { w.map(|x| x * 2) };
+assert_eq!(w2.into_inner(), 10);
 ```
+
+See `examples/composed_witnesses.rs` (`cargo run --example witness_basic -p tpt-for-witness`)
+for the printable version, including the `AndError` breakdown of which conjunct
+failed.
 
 ## Cargo features
 

@@ -23,5 +23,5 @@ workspace = true
 
 [[example]]
 name = "trace_macros_basic"
-path = "examples/basic.rs"
+path = "examples/packet_trace.rs"
 

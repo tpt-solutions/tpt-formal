@@ -13,11 +13,24 @@ categories = ["science", "mathematics", "algorithms"]
 
 [dependencies]
 tpt-for-contract = { workspace = true }
+tpt-sci-ode = { workspace = true, optional = true }
+
+[features]
+# Wrap the high-performance adaptive solvers from `tpt-sci-ode` (tpt-science
+# pillar) behind the same `OdeSystem` / `Vec<Point>` trajectory surface as the
+# built-in fixed-step integrators. Off by default so the crate stays
+# self-contained and `no_std`-friendly-leaning.
+backend-sci-ode = ["dep:tpt-sci-ode"]
 
 [lints]
 workspace = true
 
 [[example]]
 name = "verified_ode_basic"
-path = "examples/basic.rs"
+path = "examples/decay_integration.rs"
+
+[[example]]
+name = "sci_ode_basic"
+path = "examples/sci_ode_basic.rs"
+required-features = ["backend-sci-ode"]
 

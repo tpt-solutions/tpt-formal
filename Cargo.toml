@@ -60,6 +60,12 @@ tpt-for-abstract-interp = { version = "0.1.0", path = "crates/tpt-for-abstract-i
 tpt-for-symbolic-exec = { version = "0.1.0", path = "crates/tpt-for-symbolic-exec" }
 tpt-for-runtime-verify = { version = "0.1.0", path = "crates/tpt-for-runtime-verify" }
 
+# High-performance ODE backend (from the `tpt-science` pillar), wired into
+# `tpt-for-verified-ode`'s `backend-sci-ode` feature. Pulled from git because it
+# is not published to crates.io (`publish = false`); it resolves its own
+# `tpt-math-numeric`/`thiserror`/cranelift deps from crates.io.
+tpt-sci-ode = { git = "https://github.com/tpt-solutions/tpt-science", branch = "master", package = "tpt-sci-ode" }
+
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "warn"
 

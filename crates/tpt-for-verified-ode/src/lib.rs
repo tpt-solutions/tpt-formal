@@ -8,10 +8,13 @@
 //! # Backend composition
 //!
 //! The spec pairs this crate with `tpt-science`'s `tpt-sci-ode` for
-//! higher-order / adaptive methods. `tpt-sci-ode` is not published yet, so this
-//! crate ships self-contained, contract-guarded integrators; when `tpt-sci-ode`
-//! lands, its solvers can be wrapped behind the same [`OdeSystem`] contract
-//! surface (or consumed directly) without changing call sites here.
+//! higher-order / adaptive methods. The built-in [`solve_euler`] / [`solve_rk4`]
+//! integrators are self-contained and contract-guarded; the optional
+//! `backend-sci-ode` feature ([`sci_ode`]) wraps `tpt-sci-ode`'s from-scratch
+//! adaptive solvers (Tsit45, TR-BDF2, ESDIRK34, BDF) behind the *same*
+//! [`OdeSystem`] trait and returns the identical [`Vec<Point>`] trajectory
+//! shape, so the high-performance backend slots in without changing call sites
+//! that consume the trajectory.
 
 use tpt_for_contract::{ensures, invariant, requires};
 
@@ -140,6 +143,84 @@ fn axpy(y: &[f64], k: &[f64], a: f64) -> Vec<f64> {
     y.iter().zip(k).map(|(yi, ki)| yi + a * ki).collect()
 }
 
+/// High-performance adaptive ODE backend powered by `tpt-sci-ode` (from the
+/// `tpt-science` pillar).
+///
+/// The [`solve`] adapter exposes any [`OdeSystem`] to `tpt-sci-ode`'s
+/// from-scratch adaptive solvers and returns the same [`Vec<Point>`] trajectory
+/// shape as the built-in fixed-step [`solve_euler`] / [`solve_rk4`], so the
+/// higher-order backend slots in without changing call sites that consume the
+/// trajectory.
+///
+/// Enabled by the `backend-sci-ode` feature.
+#[cfg(feature = "backend-sci-ode")]
+pub mod sci_ode {
+    use crate::{OdeSystem, Point};
+    use tpt_for_contract::requires;
+    use tpt_sci_ode::{OdeError, OdeProblem, RhsCallable};
+
+    /// Re-export of `tpt-sci-ode`'s solver-method selection.
+    pub use tpt_sci_ode::Method;
+
+    /// Adapter exposing an [`OdeSystem`] to `tpt-sci-ode`'s solver pipeline.
+    struct SciRhs<S>(S);
+
+    impl<S: OdeSystem> RhsCallable for SciRhs<S> {
+        fn nstates(&self) -> usize {
+            self.0.dim()
+        }
+        fn call(&self, t: f64, y: &[f64], dydt: &mut [f64]) -> Result<(), OdeError> {
+            self.0.rhs(t, y, dydt);
+            Ok(())
+        }
+    }
+
+    /// Solve the IVP defined by `sys` with a high-performance adaptive solver
+    /// from `tpt-sci-ode`, sampling the trajectory at spacing `dt` over
+    /// `[t0, t_end]`.
+    ///
+    /// Unlike the fixed-step [`crate::solve_euler`] / [`crate::solve_rk4`], the
+    /// underlying integrator chooses its own step size for accuracy/stability
+    /// (default tolerances `rtol = atol = 1e-6`) and Hermite-interpolates
+    /// exactly onto the requested `dt` grid. The returned [`Vec<Point>`]
+    /// trajectory has the same shape as the built-in solvers: non-empty,
+    /// starting at `(t0, y0)`, with one point per `dt` sample.
+    ///
+    /// # Errors
+    ///
+    /// Returns `tpt-sci-ode`'s [`OdeError`] on integration failure (e.g.
+    /// non-convergent Newton step, collapsed step size, or step budget
+    /// exceeded).
+    #[allow(clippy::too_many_arguments)]
+    pub fn solve<S: OdeSystem + 'static>(
+        sys: S,
+        y0: &[f64],
+        t0: f64,
+        t_end: f64,
+        dt: f64,
+        method: Method,
+    ) -> Result<Vec<Point>, OdeError> {
+        requires!(dt > 0.0, "step size must be strictly positive");
+        requires!(t_end > t0, "integration interval must be strictly positive");
+
+        let prob = OdeProblem::from_rhs(SciRhs(sys), y0.to_vec(), t0)?;
+        // `t_eval` must be strictly beyond `t0`; the initial point is implicit,
+        // so we sample from `t0 + dt` onward and prepend `(t0, y0)`.
+        let n_steps = ((t_end - t0) / dt).ceil() as usize;
+        let t_eval: Vec<f64> = (1..=n_steps).map(|i| t0 + i as f64 * dt).collect();
+        let states = prob.solve_dense(method, &t_eval)?;
+        let mut traj = Vec::with_capacity(n_steps + 1);
+        traj.push(Point {
+            t: t0,
+            y: y0.to_vec(),
+        });
+        for (i, y) in states.into_iter().enumerate() {
+            traj.push(Point { t: t_eval[i], y });
+        }
+        Ok(traj)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -187,6 +268,25 @@ mod tests {
         // t_end <= t0 violates the precondition; under debug checks this
         // panics. We only assert the well-formed call succeeds.
         let traj = solve_rk4(&Decay, &[1.0], 0.0, 0.5, 0.05);
+        assert_eq!(traj[0].y[0], 1.0);
+    }
+
+    #[cfg(feature = "backend-sci-ode")]
+    #[test]
+    fn sci_ode_matches_exponential_decay() {
+        use crate::sci_ode::{solve, Method};
+        let traj = solve(Decay, &[1.0], 0.0, 1.0, 0.01, Method::Tsit45).unwrap();
+        let final_y = traj.last().unwrap().y[0];
+        let expected = (-1.0_f64).exp();
+        assert!(
+            (final_y - expected).abs() < 1e-5,
+            "got {}, want {}",
+            final_y,
+            expected
+        );
+        // Trajectory shape matches the built-in solvers.
+        assert_eq!(traj[0].t, 0.0);
+        assert!(!traj.is_empty());
         assert_eq!(traj[0].y[0], 1.0);
     }
 }

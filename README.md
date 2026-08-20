@@ -28,7 +28,7 @@ primitives into one dedicated pillar. The authoritative design notes live in
 | `tpt-for-witness` | 3 | yes | tpt-for-typestate | Witness types |
 | `tpt-for-refinement` | 3 | yes | tpt-for-contract | Refinement types |
 | `tpt-for-verified-algorithms` | 4 | no | tpt-for-contract | Verified algorithm implementations (gcd/clamp/binary-search/insertion-sort) |
-| `tpt-for-verified-ode` | 4 | no | tpt-for-contract | Verified ODE solving — contract-guarded Euler/RK4 over `OdeSystem`; `tpt-sci-ode` is the designated high-performance backend to wrap later |
+| `tpt-for-verified-ode` | 4 | no | tpt-for-contract | Verified ODE solving — contract-guarded Euler/RK4 over `OdeSystem`; optional `backend-sci-ode` feature wraps `tpt-sci-ode` (sibling `tpt-science`) behind the same `OdeSystem` surface |
 | `tpt-for-smt-lite` | 5 | no | — | Lightweight SMT bridge: term/problem builder + SMT-LIB2 + minimal evaluator (ADR 0007: `rsmt2`/`z3` valid wrap targets) |
 | `tpt-for-proof-ast` | 6 | no | — | Proof AST representation |
 | `tpt-for-det-proptest` | 6 | no | — | Deterministic property-based testing |
@@ -46,10 +46,11 @@ primitives into one dedicated pillar. The authoritative design notes live in
 
 All phases (0–7) are landed. The 13 original crates plus the six Phase 7
 ecosystem-gap crates are implemented, documented, and tested. The `no_std`
-crates build for `thumbv6m-none-eabi`. `tpt-for-verified-ode` remains
-**deferred** for its high-performance backend — it is designed to compose with
-the cross-repo `tpt-sci-ode` (sibling `tpt-science` repo), which is not built
-yet. See [`todo.md`](todo.md) for the per-phase tracker.
+crates build for `thumbv6m-none-eabi`. `tpt-for-verified-ode` now composes with
+the cross-repo `tpt-sci-ode` (sibling `tpt-science` repo) through its optional
+`backend-sci-ode` feature, wrapping its adaptive solvers behind the same
+[`OdeSystem`](crates/tpt-for-verified-ode/src/lib.rs) contract surface. See
+[`todo.md`](todo.md) for the per-phase tracker.
 
 > **Phase 7 registry pre-check:** the `tpt-rust-map/registry.toml` pre-check
 > recommended by `spec.txt` could not be performed in this environment (the
@@ -71,9 +72,11 @@ tpt-for-smt-lite ─────► tpt-for-symbolic-exec
 tpt-for-assert-const ──► (compile-time only, no runtime deps)
 ```
 
-`tpt-for-verified-ode` is designed to compose with the cross-repo `tpt-sci-ode`
-(sibling `tpt-science` repo) as a higher-order backend behind the same
-[`OdeSystem`](crates/tpt-for-verified-ode/src/lib.rs) contract surface.
+`tpt-for-verified-ode` composes with the cross-repo `tpt-sci-ode` (sibling
+`tpt-science` repo) as a higher-order backend behind the same
+[`OdeSystem`](crates/tpt-for-verified-ode/src/lib.rs) contract surface, via the
+optional `backend-sci-ode` feature
+([`sci_ode::solve`](crates/tpt-for-verified-ode/src/lib.rs)).
 
 ## License
 

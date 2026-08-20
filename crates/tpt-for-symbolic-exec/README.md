@@ -13,38 +13,53 @@ are detected automatically:
 
 ## Features
 
-- `SExpr` / `SCond` / `SStmt` — a symbolic IR with `Assign`, `If`, `Assert`,
-  and `Assume`, plus symbolic inputs via `SExpr::sym`.
-- `run(program)` — explore all feasible paths, returning a `SymReport` of
-  `violations` (each carrying its witnessing path condition) and
-  `paths_explored`.
-- Infeasible branches are pruned using `tpt-for-smt-lite`'s satisfiability
-  check; `Unknown` results are treated conservatively as feasible.
+- `SExpr` — a symbolic integer expression: `Const`, `Sym`, `Var`, `Add`,
+  `Sub`, `Mul`, `Div`, `Neg`, with constructors `const_`, `sym`, `var`,
+  `add`, `sub`, `mul`, `div`.
+- `SCond` — symbolic boolean conditions: `True`, `Eq`, `Lt`, `Le`, `Gt`, `Ge`,
+  `Not`, `And`, `Or`, with constructors `eq`, `lt`, `le`, `gt`, `ge`, `not`,
+  `and`, `or`.
+- `SStmt` — statements `Assign`, `If`, `Assert`, `Assume`, with builders
+  `assign`, `if_then_else`, `assert`, `assume`.
+- `ViolationKind` — `DivByZero` (a denominator can be `0` on a feasible path)
+  and `Assertion` (an `Assert`'s negation is feasible).
+- `Violation` — a defect carrying its `kind` and the witnessing `path_condition`.
+- `SymReport` — `violations` (all defects across explored paths) and
+  `paths_explored` (distinct feasible paths).
+- `run(program)` — whole-program symbolic execution: prunes infeasible branches
+  with `tpt-for-smt-lite`'s satisfiability check, treating `Unknown`
+  conservatively as feasible.
 
 ## Example
 
-```rust
-use tpt_for_symbolic_exec::{SExpr, SCond, SStmt, run, ViolationKind};
+Symbolically execute small programs and report defects. `z = a / b` with both
+inputs symbolic yields a `DivByZero` (since `b == 0` is feasible), while
+`assume(b != 0); z = a / b` prunes that branch and reports no violation. A free
+`assert(x >= 0)` is violated (`x < 0` feasible), and a branching program with a
+trailing `10 / n` explores two paths, each reporting a `DivByZero`.
 
-// z = 10 / x;   with x a free symbolic input → x == 0 is feasible.
-let prog = vec![SStmt::assign(
-    "z",
-    SExpr::div(SExpr::const_(10), SExpr::sym("x")),
-)];
-let report = run(&prog);
+```rust
+use tpt_for_symbolic_exec::{run, SCond, SExpr, SStmt, ViolationKind};
+
+// Unsafe division: `z = a / b`, both symbolic → DivByZero (b == 0 feasible).
+let unsafe_div = vec![SStmt::assign("z", SExpr::div(SExpr::sym("a"), SExpr::sym("b")))];
+let report = run(&unsafe_div);
 assert_eq!(report.violations.len(), 1);
 assert!(matches!(report.violations[0].kind, ViolationKind::DivByZero));
 
-// A guarded, ground-true assertion produces no violations:
-let ok = vec![
-    SStmt::assume(SCond::eq(SExpr::const_(2), SExpr::const_(2))),
-    SStmt::assert(SCond::eq(
-        SExpr::add(SExpr::const_(2), SExpr::const_(3)),
-        SExpr::const_(5),
-    )),
+// Guarded: `assume(b != 0); z = a / b` → no violation.
+let safe_div = vec![
+    SStmt::assume(SCond::not(SCond::eq(SExpr::sym("b"), SExpr::const_(0)))),
+    SStmt::assign("z", SExpr::div(SExpr::sym("a"), SExpr::sym("b"))),
 ];
-assert!(run(&ok).violations.is_empty());
+assert!(run(&safe_div).violations.is_empty());
+
+// Broken assertion: `assert(x >= 0)` with x free → Assertion violation.
+let bad = vec![SStmt::assert(SCond::ge(SExpr::var("x"), SExpr::const_(0)))];
+assert!(matches!(run(&bad).violations[0].kind, ViolationKind::Assertion));
 ```
+
+Run it with `cargo run --example symbolic_exec_basic -p tpt-for-symbolic-exec`.
 
 ## Cargo features
 

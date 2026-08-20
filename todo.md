@@ -81,8 +81,11 @@ spec.txt's per-crate build notes, not a code port.
 
 **`tpt-for-verified-ode`** — verified ODE solving (needs `tpt-for-contract`)
 - [x] Implemented self-contained: contract-guarded Euler/RK4 integrators over a
-      generic `OdeSystem` trait. `tpt-sci-ode` is the designated high-performance
-      backend to wrap later (documented; not yet published).
+      generic `OdeSystem` trait. The optional `backend-sci-ode` feature now wraps
+      `tpt-sci-ode` (sibling `tpt-science`) behind the same `OdeSystem` surface
+      via `sci_ode::solve`, returning the identical `Vec<Point>` trajectory shape
+      (pulled from its github `master` via a `tpt-sci-ode` git dependency in the
+      workspace `[workspace.dependencies]`).
 - [x] Scaffold crate
 - [x] Design public API (`OdeSystem` trait + `solve_euler`/`solve_rk4`)
 - [x] Implement
@@ -90,8 +93,9 @@ spec.txt's per-crate build notes, not a code port.
 - [x] Docs + examples
 
 > all 19 `tpt-for-*` crates are now implemented. `tpt-sci-ode` (sibling
-> `tpt-science`) remains the only outstanding external dependency, tracked as a
-> future backend for `tpt-for-verified-ode`.
+> `tpt-science`) is wired in as an optional backend for `tpt-for-verified-ode`
+> via the `backend-sci-ode` feature (`sci_ode::solve`), so there is no longer an
+> outstanding external dependency for that crate.
 
 ## Phase 5 — SMT Bridge
 

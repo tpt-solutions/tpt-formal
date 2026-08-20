@@ -18,21 +18,26 @@ corrupt the output. `no_std`, core-only.
 ## Example
 
 ```rust
-use tpt_for_redundancy::{majority_vote, Tmr, Redundant};
+use tpt_for_redundancy::{majority_vote, Parity, Redundant, Tmr};
 
-// Majority vote across arbitrary copies.
-assert_eq!(majority_vote(&[1u8, 1, 2]), Some(1));
-assert_eq!(majority_vote(&[1u8, 2]), None); // tie → None
+// Triple Modular Redundancy masks a single faulty replica.
+let tmr = Tmr::new(50u8, 50, 70);
+assert_eq!(tmr.vote(), Some(50));
+assert_eq!(Tmr::new(1u8, 2, 3).vote(), None); // all differ
 
-// Triple Modular Redundancy.
-let tmr = Tmr::new(10u32, 10, 9);
-assert_eq!(tmr.vote(), Some(10));
-assert_eq!(Tmr::new(1u32, 2, 3).vote(), None); // all differ
-
-// N-copy redundancy.
-let r = Redundant::<u8, 5>::new([1, 1, 1, 2, 3]);
+// N-copy majority voting.
+let r = Redundant::<u8, 5>::new([1, 1, 1, 0, 0]);
 assert_eq!(r.majority(), Some(1));
 assert_eq!(r.len(), 5);
+
+// A straight majority vote can tie on an even count.
+assert_eq!(majority_vote(&[1u8, 1, 2, 2]), None);
+
+// Single-bit parity detects a flipped bit.
+let p = Parity::compute(&[0b1010_1010]);
+let mut c = [0b1010_1010];
+c[0] ^= 0b0000_1000;
+assert!(!p.matches(&Parity::compute(&c)));
 ```
 
 ## Cargo features

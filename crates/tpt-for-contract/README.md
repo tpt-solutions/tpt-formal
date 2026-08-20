@@ -17,28 +17,55 @@ skipped in release builds.
 - `debug_requires!` / `debug_ensures!` / `debug_invariant!` /
   `debug_loop_invariant!` — compile to nothing under
   `cfg(not(debug_assertions))`.
-- `ContractError` / `report` — the structured failure type and reporter hook.
+- `Invariant` trait + `check_invariant!` macro — declare and assert a value's
+  own invariant (`Invariant::check`).
+- `ContractError` / `report` — the structured failure type (kind/expr/file/line)
+  and the reporter hook called by every macro.
 
 ## Example
 
 ```rust
-use tpt_for_contract::requires;
+use tpt_for_contract::{check_invariant, ensures, invariant, loop_invariant, requires, Invariant};
 
-fn divide(a: i32, b: i32) -> i32 {
-    requires!(b != 0, "division by zero");
-    a / b
+struct Account { balance: i64 }
+impl Invariant for Account {
+    fn check(&self) -> bool { self.balance >= 0 }
+}
+impl Account {
+    fn withdraw(&mut self, amt: i64) -> i64 {
+        requires!(amt >= 0, "withdraw amount must be non-negative");
+        requires!(amt <= self.balance, "cannot overdraw");
+        self.balance -= amt;
+        ensures!(self.balance >= 0);
+        self.balance
+    }
 }
 
-// Postconditions and loop invariants follow the same shape:
-use tpt_for_contract::{ensures, loop_invariant};
+fn total(n: i64) -> i64 {
+    requires!(n >= 0);
+    let mut sum = 0i64;
+    let mut i = 0;
+    while i < n {
+        loop_invariant!(sum >= 0);
+        loop_invariant!(sum == i * (i - 1) / 2);
+        sum = sum.saturating_add(i);
+        i += 1;
+    }
+    ensures!(sum == n * (n - 1) / 2);
+    sum
+}
 
-fn abs(x: i32) -> i32 {
-    let mut r = if x < 0 { -x } else { x };
-    loop_invariant!(r >= 0);
-    ensures!(r >= 0);
-    r
+fn main() {
+    let mut acc = Account { balance: 100 };
+    check_invariant!(acc);
+    acc.withdraw(30);
+    check_invariant!(acc);
+    // A *violated* contract panics with the condition's source text, file, line:
+    //   acc.withdraw(20); // -> "precondition violated ... amt <= self.balance"
 }
 ```
+
+Run it with `cargo run --example contract_basic -p tpt-for-contract`.
 
 ## Cargo features
 

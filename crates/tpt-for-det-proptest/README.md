@@ -9,35 +9,50 @@ exactly — crucial for CI and regression tracking.
 
 ## Features
 
-- `DeterministicRng` — a fast xorshift64* generator; `next_u64`, `gen_range`,
-  `gen_bool`, `fill_bytes`.
-- `Gen<T>` — a strategy producing `T` from a deterministic RNG (impls for
-  `u64`/`u32`/`i64`/`bool`).
+- `DeterministicRng` — a fast xorshift64* generator; `new`, `next_u64`,
+  `gen_range`, `gen_bool`, `fill_bytes` (a zero seed is remapped to a non-zero
+  state).
+- `Gen<T>` — a strategy producing `T` from a deterministic RNG; blanket impls
+  for `()` over `u64` / `u32` / `i64` / `bool`.
 - `check_prop` — run a property over `N` generated cases, returning
   `Outcome::Passed` or a `CounterExample` (input, seed, case index).
 - `assert_prop` — like `check_prop` but panics with the counterexample on
   failure, for use inside `#[test]`s.
+- `Outcome<T>` / `CounterExample<T>` — the result and replayable failure types.
 
 ## Example
 
 ```rust
-use tpt_for_det_proptest::{check_prop, DeterministicRng, Gen, Outcome};
+use tpt_for_det_proptest::{check_prop, CounterExample, DeterministicRng, Gen, Outcome};
 
-// The same seed always yields the same stream.
-let mut a = DeterministicRng::new(42);
-let mut b = DeterministicRng::new(42);
-assert_eq!(a.next_u64(), b.next_u64());
+// A passing property over a determined run (gen, cases, seed):
+let ok = check_prop(&(), 500, 1, |x: u64| x.clamp(10, 100) >= 10);
+assert!(matches!(ok, Outcome::Passed { .. }));
 
-// A fully determined property run (gen, cases, seed) → reproducible result.
-let out = check_prop(&(), 100, 1, |x: u64| x.wrapping_add(1) != x.wrapping_sub(1));
-assert!(matches!(out, Outcome::Passed { .. }));
+// A failing property returns a concrete, replayable counterexample:
+let bad = check_prop(&(), 500, 7, |x: u64| x % 2 == 0);
+let first: CounterExample<u64> = match &bad {
+    Outcome::Failed(ce) => ce.clone(),
+    Outcome::Passed { .. } => unreachable!(),
+};
+// Re-running with the same seed reproduces the identical counterexample:
+let replay = check_prop(&(), 500, 7, |x: u64| x % 2 == 0);
+let replay_ce: CounterExample<u64> = match replay {
+    Outcome::Failed(ce) => ce,
+    Outcome::Passed { .. } => unreachable!(),
+};
+assert_eq!(first, replay_ce);
 
-// A failing property returns a concrete, replayable counterexample.
-let bad = check_prop(&(), 100, 7, |x: u64| x % 2 == 0);
-if let Outcome::Failed(ce) = bad {
-    assert!(ce.input % 2 != 0);
+// Custom strategies implement `Gen<T>` over a `DeterministicRng`:
+struct PairGen;
+impl Gen<(u64, u64)> for PairGen {
+    fn generate(&self, rng: &mut DeterministicRng) -> (u64, u64) {
+        (rng.next_u64(), rng.next_u64())
+    }
 }
 ```
+
+Run it with `cargo run --example det_proptest_basic -p tpt-for-det-proptest`.
 
 ## Cargo features
 

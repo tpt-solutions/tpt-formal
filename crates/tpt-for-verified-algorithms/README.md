@@ -19,20 +19,30 @@ the workspace MSRV (1.75), avoiding newer `std` helpers.
 ## Example
 
 ```rust
-use tpt_for_verified_algorithms::{gcd, clamp, binary_search, insertion_sort};
+use std::panic;
+use tpt_for_verified_algorithms::{binary_search, clamp, gcd, insertion_sort};
 
-assert_eq!(gcd(12, 8), 4);
+// Happy path: each routine returns a correctly-computed, contract-checked result.
+assert_eq!(gcd(12, 18), 6);
 assert_eq!(gcd(17, 0), 17);
-
 assert_eq!(clamp(5, 0, 10), 5);
 assert_eq!(clamp(-3, 0, 10), 0);
 assert_eq!(clamp(99, 0, 10), 10);
-
 assert_eq!(binary_search(&[1, 3, 5, 7, 9], 5), Some(2));
-
+assert_eq!(binary_search(&[1, 3, 5, 7, 9], 4), None);
 let sorted = insertion_sort(&[3, 1, 2, 5, 4]);
-assert_eq!(sorted, vec![1, 2, 3, 4, 5]);
+assert!(sorted.windows(2).all(|w| w[0] <= w[1]));
+
+// Failure path: the contracts panic rather than be silently wrong.
+// gcd(0, 0) violates "at least one argument non-zero".
+assert!(panic::catch_unwind(|| gcd(0, 0)).is_err());
+// An unsorted slice also trips binary_search's precondition.
+assert!(panic::catch_unwind(|| binary_search(&[3, 1, 2], 2)).is_err());
 ```
+
+See `examples/algorithms_demo.rs` (`cargo run --example verified_algorithms_basic -p
+tpt-for-verified-algorithms`) for the printable version, including the panic
+messages the contracts emit on bad input.
 
 ## Cargo features
 

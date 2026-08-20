@@ -22,12 +22,17 @@ structure — soundness checking is left to downstream tools.
 ## Example
 
 ```rust
-use tpt_for_proof_ast::{Term, Formula, Proof, Rule};
+use tpt_for_proof_ast::proof::Rule;
+use tpt_for_proof_ast::{Term, Formula, Proof};
 
-// even(n) → halvable(n)
-let f = Formula::pred("even", vec![Term::var("n")])
+// A function application and its free variables.
+let t = Term::app("add", vec![Term::var("x"), Term::Num(1)]);
+assert_eq!(t.free_vars().len(), 1);
+
+// A universally-quantified implication ∀n. even(n) → halvable(n).
+let prop = Formula::pred("even", vec![Term::var("n")])
     .implies(Formula::pred("halvable", vec![Term::var("n")]));
-assert_eq!(f.predicates().len(), 2);
+assert_eq!(prop.clone().forall("n").predicates().len(), 2);
 
 // A modus-ponens proof tree: (P→Q), P ⊢ Q
 let imp = Formula::pred("P", vec![]).implies(Formula::pred("Q", vec![]));
@@ -41,6 +46,7 @@ let proof = Proof::step(
 );
 assert_eq!(proof.size(), 3);
 assert_eq!(proof.depth(), 2);
+assert_eq!(proof.conclusions().len(), 3);
 ```
 
 ## Cargo features

@@ -18,5 +18,5 @@ workspace = true
 
 [[example]]
 name = "model_check_basic"
-path = "examples/basic.rs"
+path = "examples/counter_safety.rs"
 
