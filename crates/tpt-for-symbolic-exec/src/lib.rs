@@ -380,12 +380,29 @@ fn exec(
         match stmt {
             SStmt::Assign(v, e) => {
                 let ev = eval(e, &store);
-                // Check every division in the (possibly nested) expression, not
-                // only one whose entire RHS is a `Div`.
+                // Check every division *syntactically written in this
+                // statement* (`e`, not the fully store-substituted `ev`) —
+                // not only one whose entire RHS is a `Div`, but also not
+                // one that only appears because a plain `Var` reference on
+                // the right-hand side happens to resolve to an earlier
+                // division's already-stored expression. A division is
+                // checked exactly once, at the statement that actually
+                // performs it: `r = a / c;` checks it there; a later
+                // `s = r;` (or `w = r + 1;`) must not re-materialize and
+                // re-check the same `a / c` all over again just because
+                // `eval` substitutes `r`'s stored (still-symbolic) value.
+                // Each collected denominator is still evaluated through the
+                // store before the zero-check, since the denominator of a
+                // genuinely-new division here can itself be a `Var` (e.g.
+                // `x / r`) whose actual constrained value only the store
+                // knows — `to_term` treats a bare `Var` as an independent,
+                // unconstrained symbol otherwise, which would make this
+                // check meaningless for exactly the case it needs to cover.
                 let mut divs = Vec::new();
-                collect_divs(&ev, &mut divs);
+                collect_divs(e, &mut divs);
                 for d in &divs {
-                    record_div(d, &pc, violations);
+                    let d_eval = eval(d, &store);
+                    record_div(&d_eval, &pc, violations);
                 }
                 store.insert(v.to_string(), ev);
             }
@@ -598,5 +615,68 @@ mod tests {
             .violations
             .iter()
             .any(|v| matches!(v.kind, ViolationKind::DivByZero)));
+    }
+
+    #[test]
+    fn division_is_not_reported_again_through_a_passthrough_chain() {
+        // r = a / c;  second = r;  ret = second;
+        // A division is checked exactly once, at the statement that
+        // actually performs it. `eval`'s `Var` substitution rebuilds `r`'s
+        // still-symbolic stored value (which still literally contains the
+        // `Div` node) for every later statement that merely copies it
+        // along — `collect_divs` must not re-discover and re-report that
+        // same division on every hop of the chain.
+        let prog = vec![
+            SStmt::assign("r", SExpr::div(SExpr::sym("a"), SExpr::sym("c"))),
+            SStmt::assign("second", SExpr::var("r")),
+            SStmt::assign("ret", SExpr::var("second")),
+        ];
+        let r = run(&prog);
+        assert_eq!(r.violations.len(), 1, "{:#?}", r.violations);
+    }
+
+    #[test]
+    fn division_through_a_combining_expression_is_still_reported_once() {
+        // w = r + 1;  where r was itself a division — combining `r` into a
+        // larger expression must not re-trigger its already-checked
+        // division either.
+        let prog = vec![
+            SStmt::assign("r", SExpr::div(SExpr::const_(10), SExpr::sym("x"))),
+            SStmt::assign("w", SExpr::add(SExpr::var("r"), SExpr::const_(1))),
+        ];
+        let r = run(&prog);
+        assert_eq!(r.violations.len(), 1, "{:#?}", r.violations);
+    }
+
+    #[test]
+    fn division_by_a_var_denominator_is_still_checked_against_its_real_value() {
+        // The fix must not stop checking a *genuinely new* division just
+        // because its denominator happens to be a `Var` reference (e.g. a
+        // value produced by an earlier statement): a pure-ground `z = 5;
+        // 10 / z` must still be proven safe, which only works if the
+        // denominator is evaluated through the store at the point it's
+        // actually divided by, not left as a bare, unconstrained `Var`
+        // (which `to_term` treats as an independent free symbol that could
+        // be anything, including zero).
+        let prog = vec![
+            SStmt::assign("z", SExpr::const_(5)),
+            SStmt::assign("safe", SExpr::div(SExpr::const_(10), SExpr::var("z"))),
+        ];
+        let r = run(&prog);
+        assert!(
+            r.violations.is_empty(),
+            "division by a provably-non-zero Var should be safe: {:#?}",
+            r.violations
+        );
+
+        // And the same shape with a genuinely *unconstrained* Var
+        // denominator must still be flagged — the fix must not have
+        // simply stopped checking Var denominators altogether.
+        let prog2 = vec![
+            SStmt::assign("y", SExpr::sym("free")),
+            SStmt::assign("unsafe_", SExpr::div(SExpr::const_(10), SExpr::var("y"))),
+        ];
+        let r2 = run(&prog2);
+        assert_eq!(r2.violations.len(), 1, "{:#?}", r2.violations);
     }
 }
