@@ -27,6 +27,8 @@ members = [
     "crates/tpt-for-abstract-interp",
     "crates/tpt-for-symbolic-exec",
     "crates/tpt-for-runtime-verify",
+    # Phase 8 — CFD invariants
+    "crates/tpt-for-cfd-invariants",
 ]
 exclude = []
 
@@ -47,6 +49,7 @@ tpt-for-witness = { version = "0.1.0", path = "crates/tpt-for-witness" }
 tpt-for-refinement = { version = "0.1.0", path = "crates/tpt-for-refinement" }
 tpt-for-verified-algorithms = { version = "0.1.0", path = "crates/tpt-for-verified-algorithms" }
 tpt-for-verified-ode = { version = "0.1.0", path = "crates/tpt-for-verified-ode" }
+tpt-for-cfd-invariants = { version = "0.1.0", path = "crates/tpt-for-cfd-invariants" }
 tpt-for-smt-lite = { version = "0.1.0", path = "crates/tpt-for-smt-lite" }
 tpt-for-proof-ast = { version = "0.1.0", path = "crates/tpt-for-proof-ast" }
 tpt-for-det-proptest = { version = "0.1.0", path = "crates/tpt-for-det-proptest" }

@@ -392,6 +392,14 @@ name = "tpt-for-assert-const"
 version = "0.1.0"
 
 [[package]]
+name = "tpt-for-cfd-invariants"
+version = "0.1.0"
+dependencies = [
+ "tpt-for-contract",
+ "tpt-for-det-proptest",
+]
+
+[[package]]
 name = "tpt-for-contract"
 version = "0.1.0"
 

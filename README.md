@@ -41,11 +41,12 @@ primitives into one dedicated pillar. The authoritative design notes live in
 | `tpt-for-abstract-interp` | 7 | no | — | Generic abstract interpretation: `AbstractDomain` trait, fixpoint engine, `Interval` domain |
 | `tpt-for-symbolic-exec` | 7 | no | tpt-for-smt-lite | Whole-program symbolic execution (div-by-zero / broken-assertion detection) |
 | `tpt-for-runtime-verify` | 7 | no | — | Runtime verification: clean-room temporal-logic monitor over live traces |
+| `tpt-for-cfd-invariants` | 8 | no | tpt-for-contract | CFD invariants as contracts — D2Q9 LBM mass conservation (bounded f64 drift) and CFL < 1 upwind energy stability |
 
 ## Status
 
-All phases (0–7) are landed. The 13 original crates plus the six Phase 7
-ecosystem-gap crates are implemented, documented, and tested. The `no_std`
+All phases (0–8) are landed. The 13 original crates plus the six Phase 7
+ecosystem-gap crates and the Phase 8 `tpt-for-cfd-invariants` crate are implemented, documented, and tested. The `no_std`
 crates build for `thumbv6m-none-eabi`. `tpt-for-verified-ode` now composes with
 the cross-repo `tpt-sci-ode` (sibling `tpt-science` repo) through its optional
 `backend-sci-ode` feature, wrapping its adaptive solvers behind the same
@@ -67,6 +68,7 @@ tpt-for-typestate ─────► tpt-for-witness
 tpt-for-contract ──────► tpt-for-refinement
 tpt-for-contract ──────► tpt-for-verified-algorithms
 tpt-for-contract ──────► tpt-for-verified-ode
+tpt-for-contract ──────► tpt-for-cfd-invariants
 tpt-for-smt-lite ─────► tpt-for-vcgen
 tpt-for-smt-lite ─────► tpt-for-symbolic-exec
 tpt-for-assert-const ──► (compile-time only, no runtime deps)

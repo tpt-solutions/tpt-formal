@@ -1,0 +1,25 @@
+[package]
+name = "tpt-for-cfd-invariants"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "CFD invariants as checked contracts: LBM mass conservation and CFL energy stability."
+
+readme = "README.md"
+keywords = ["cfd", "lattice-boltzmann", "cfl", "stability", "verification"]
+categories = ["science", "mathematics", "algorithms"]
+
+[dependencies]
+tpt-for-contract = { workspace = true }
+
+[dev-dependencies]
+tpt-for-det-proptest = { workspace = true }
+
+[lints]
+workspace = true
+
+[[example]]
+name = "cfd_invariants_basic"
+path = "examples/lbm_and_cfl.rs"

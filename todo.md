@@ -316,6 +316,16 @@ workspace.
       fixable from within this repo — revisit once that repo is available or
       this repo is pushed to a remote.
 
+## Phase 8 — CFD Invariants
+
+**`tpt-for-cfd-invariants`** — CFD invariants as contracts (needs `tpt-for-contract`)
+- [x] Scaffold crate
+- [x] Design public API (D2Q9 `collide_bgk` mass contract, upwind `upwind_step`/`run` CFL energy contract)
+- [x] Implement
+- [x] Unit + deterministic property tests (incl. CFL > 1 negative control)
+- [x] Docs + examples
+- [ ] Follow-up: Kani harnesses for machine-checked proofs
+
 ## Phase 9 — Release & Publish
 
 do not publish unless explicitly asked for
